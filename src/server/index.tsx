@@ -30,6 +30,21 @@ const app = new Hono();
 // Favicon - immediate return to stop 404s
 app.get('/favicon.ico', (c) => c.body(null, 204));
 
+// PWA Assets
+app.get('/manifest.json', serveStatic({ path: './public/manifest.json' }));
+app.get('/sw.js', serveStatic({ path: './public/sw.js' }));
+
+app.get('/offline', (c) => {
+    return c.render(
+        <div style="text-align: center; padding: 2rem;">
+            <h2>You are offline</h2>
+            <p>PiBooru is currently unavailable without an internet connection.</p>
+            <a href="/" class="button">Try Again</a>
+        </div>,
+        { title: "Offline" }
+    );
+});
+
 // Middleware
 app.use('*', logger());
 app.use('*', csrf());
@@ -38,11 +53,13 @@ app.use(
     secureHeaders({
         contentSecurityPolicy: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"], // unsafe-inline for the SW registration script
             styleSrc: ["'self'", "'unsafe-inline'"],
             imgSrc: ["'self'", "data:", "blob:"],
             mediaSrc: ["'self'", "data:", "blob:"],
             objectSrc: ["'none'"],
+            workerSrc: ["'self'"],
+            manifestSrc: ["'self'"],
         },
     })
 );

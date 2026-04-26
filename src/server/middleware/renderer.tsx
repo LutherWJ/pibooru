@@ -49,6 +49,13 @@ export const renderer = jsxRenderer(({ children, title }: RendererProps & { chil
         </footer>
 
         <HelpModal />
+        <script dangerouslySetInnerHTML={{ __html: `
+          if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+              navigator.serviceWorker.register('/sw.js');
+            });
+          }
+        ` }} />
       </body>
     </html>
   );

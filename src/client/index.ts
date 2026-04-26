@@ -37,6 +37,11 @@
       document.addEventListener('htmx:historyRestore', () => this.cleanupMedia());
       window.addEventListener('popstate', () => this.cleanupMedia());
 
+      // Store gallery query for Escape key navigation
+      if (window.location.pathname === '/') {
+        sessionStorage.setItem('galleryQuery', window.location.search);
+      }
+
       // Initial focus sync
       this.syncFocus();
     }
@@ -171,6 +176,11 @@
         case 'escape':
           if (document.getElementById('help-modal')?.style.display === 'flex') {
             this.hideHelp();
+          } else if (window.location.pathname.startsWith('/post/')) {
+            const query = sessionStorage.getItem('galleryQuery');
+            if (query !== null) {
+              window.location.href = `/${query}`;
+            }
           } else {
             this.resetFocus();
           }
@@ -323,12 +333,18 @@
 
     private moveFocusVertical(direction: number) {
       const items = this.getItems();
-      const grid = document.querySelector(this.gridSelector);
-      if (items.length === 0 || !grid) return;
+      if (items.length < 2) return;
 
-      // Calculate columns in the grid
-      const gridStyle = window.getComputedStyle(grid);
-      const columns = gridStyle.getPropertyValue('grid-template-columns').split(' ').length;
+      // Calculate columns based on the vertical position of elements (handles flex-wrap)
+      const firstItemTop = items[0].getBoundingClientRect().top;
+      let columns = items.length;
+
+      for (let i = 1; i < items.length; i++) {
+        if (items[i].getBoundingClientRect().top > firstItemTop + 5) { // +5 for minor subpixel differences
+          columns = i;
+          break;
+        }
+      }
 
       this.moveFocus(direction * columns);
     }
