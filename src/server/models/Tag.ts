@@ -16,8 +16,47 @@ export class TagModel {
       VALUES (?, ?, 0)
     `).run(name, namespace);
 
-    const tag = db.query("SELECT id FROM tags WHERE name = ?").get(name) as { id: number };
+    const tag = db.query("SELECT id FROM tags WHERE name = ? AND namespace = ?").get(name, namespace) as { id: number };
     return tag.id;
+  }
+
+  /**
+   * Upserts a tag (used in tests).
+   */
+  static upsert(name: string, namespace: string = "general"): number {
+    return this.getOrCreate(name, namespace);
+  }
+
+  /**
+   * Retrieves paginated tags with optional search.
+   */
+  static getPaginated(query: string = "", limit: number = 50, offset: number = 0): Tag[] {
+    if (query) {
+      return db.query(`
+        SELECT * FROM tags 
+        WHERE name LIKE ? 
+        ORDER BY post_count DESC, name ASC 
+        LIMIT ? OFFSET ?
+      `).all(`%${query.toLowerCase()}%`, limit, offset) as Tag[];
+    }
+    return db.query(`
+      SELECT * FROM tags 
+      ORDER BY post_count DESC, name ASC 
+      LIMIT ? OFFSET ?
+    `).all(limit, offset) as Tag[];
+  }
+
+  /**
+   * Counts total tags matching a query.
+   */
+  static countTotal(query: string = ""): number {
+    if (query) {
+      const result = db.query("SELECT COUNT(*) as count FROM tags WHERE name LIKE ?")
+        .get(`%${query.toLowerCase()}%`) as { count: number };
+      return result.count;
+    }
+    const result = db.query("SELECT COUNT(*) as count FROM tags").get() as { count: number };
+    return result.count;
   }
 
   /**

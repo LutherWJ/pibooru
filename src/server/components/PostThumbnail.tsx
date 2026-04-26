@@ -15,7 +15,7 @@ export const PostThumbnail: FC<PostThumbnailProps> = ({ post, active }) => {
   
   return (
     <article class="post-thumbnail" data-post-id={post.id}>
-      <a href={`/post/${post.id}`}>
+      <a href={`/post/${post.id}`} autofocus={active ? true : undefined}>
         <img 
           src={thumbUrl} 
           alt={`Post ${post.id}`}

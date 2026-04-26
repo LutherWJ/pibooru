@@ -8,13 +8,23 @@ interface HomeProps {
   currentPage?: string;
   totalCount: number;
   limit: number;
+  hasPrev?: boolean;
+  hasNext?: boolean;
 }
 
 /**
  * Home Page View
  * Refactored to Danbooru's sidebar + content layout.
  */
-export const Home: FC<HomeProps> = ({ posts, searchQuery, currentPage = "1", totalCount, limit }) => {
+export const Home: FC<HomeProps> = ({ 
+  posts, 
+  searchQuery, 
+  currentPage = "1", 
+  totalCount, 
+  limit,
+  hasPrev = false,
+  hasNext = false
+}) => {
   const queryParams = new URLSearchParams();
   if (searchQuery) queryParams.set("tags", searchQuery);
 
@@ -31,13 +41,6 @@ export const Home: FC<HomeProps> = ({ posts, searchQuery, currentPage = "1", tot
   const isNumericPage = /^\d+$/.test(currentPage);
   const pageNum = isNumericPage ? parseInt(currentPage, 10) : 1;
   const totalPages = Math.ceil(totalCount / limit);
-
-  // Determine if we should show Prev/Next
-  // If we have an after_id (page starts with 'a'), we are definitely not on the first page of results
-  // If we have a before_id (page starts with 'b'), we are definitely not on the last page of results
-  // For numeric pages, it's easier.
-  const hasPrev = isNumericPage ? pageNum > 1 : currentPage.startsWith('a') || currentPage.startsWith('b');
-  const hasNext = isNumericPage ? pageNum < totalPages : posts.length === limit;
 
   // Generate page numbers to show (up to 7, centered around current)
   const pagesToShow: number[] = [];
@@ -62,7 +65,7 @@ export const Home: FC<HomeProps> = ({ posts, searchQuery, currentPage = "1", tot
               placeholder="Tags"
               value={searchQuery || ""}
               id="tags"
-              autofocus
+              autofocus={!hasPrev && currentPage === "1" ? true : undefined}
               autocomplete="off"
               hx-get="/partials/tags/suggestions"
               hx-trigger="keyup changed delay:100ms"

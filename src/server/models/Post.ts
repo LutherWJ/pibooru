@@ -11,9 +11,9 @@ import { MediaService } from "../services/MediaService";
  */
 export class PostModel {
   /**
-   * Searches for posts based on a SearchQuery object.
+   * Internal helper to build WHERE conditions and params from a SearchQuery.
    */
-  static search(query: SearchQuery, limit: number = 50, offset: number = 0): Post[] {
+  private static buildConditions(query: SearchQuery): { conditions: string[], params: any[] } {
     const conditions: string[] = [];
     const params: any[] = [];
 
@@ -34,25 +34,60 @@ export class PostModel {
       params.push(tag.name, tag.namespace);
     }
 
+    return { conditions, params };
+  }
+
+  /**
+   * Searches for posts based on a SearchQuery object.
+   */
+  static search(query: SearchQuery, limit: number = 50, offset: number = 0): Post[] {
+    const { conditions, params } = this.buildConditions(query);
+
     // Basic order handling
-    let orderBy = "ORDER BY created_at DESC, id DESC";
+    let orderByField = "id";
     let isAscending = false;
 
     switch (query.order) {
-        case "id_desc": orderBy = "ORDER BY id DESC"; break;
-        case "id_asc": orderBy = "ORDER BY id ASC"; isAscending = true; break;
-        case "oldest": orderBy = "ORDER BY created_at ASC, id ASC"; isAscending = true; break;
+        case "id_desc": orderByField = "id"; isAscending = false; break;
+        case "id_asc": orderByField = "id"; isAscending = true; break;
+        case "oldest": orderByField = "created_at"; isAscending = true; break;
+        case "newest": default: orderByField = "created_at"; isAscending = false; break;
     }
 
     // Cursor pagination logic
+    let effectiveAscending = isAscending;
+    let reverseResults = false;
+
     if (query.before_id) {
-      conditions.push(isAscending ? "id < ?" : "id < ?");
+      // In ID DESC (default), "before" in the list means older posts (lower ID)
+      // In ID ASC, "before" in the list means older posts (lower ID)
+      // Wait, "before" in the list ALWAYS means "closer to the start of the results".
+      // If DESC (Newest First), before means HIGHER ID.
+      // If ASC (Oldest First), before means LOWER ID.
+      
+      // Actually, Danbooru uses 'b' for 'before' (older) and 'a' for 'after' (newer).
+      // Let's stick to the conventional Booru meaning:
+      // before_id (b...) -> items older than this (Next page)
+      // after_id (a...) -> items newer than this (Previous page)
+      
+      conditions.push("id < ?");
       params.push(query.before_id);
+      if (isAscending) {
+        effectiveAscending = false;
+        reverseResults = true;
+      }
     }
     if (query.after_id) {
-      conditions.push(isAscending ? "id > ?" : "id > ?");
+      conditions.push("id > ?");
       params.push(query.after_id);
+      if (!isAscending) {
+        effectiveAscending = true;
+        reverseResults = true;
+      }
     }
+
+    const direction = effectiveAscending ? "ASC" : "DESC";
+    const orderBy = `ORDER BY ${orderByField} ${direction}, id ${direction}`;
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     const limitVal = query.limit || limit;
@@ -64,32 +99,48 @@ export class PostModel {
       LIMIT ? OFFSET ?
     `;
 
-    return db.query(sql).all(...params, limitVal, offset) as Post[];
+    let results = db.query(sql).all(...params, limitVal, offset) as Post[];
+
+    if (reverseResults) {
+      results.reverse();
+    }
+
+    return results;
+  }
+
+  /**
+   * Checks if there are any posts newer than the given cursor.
+   */
+  static hasNewer(query: SearchQuery, cursorId: number): boolean {
+    const { conditions, params } = this.buildConditions(query);
+    conditions.push("id > ?");
+    params.push(cursorId);
+    
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const sql = `SELECT EXISTS(SELECT 1 FROM posts ${whereClause}) as result`;
+    const row = db.query(sql).get(...params) as { result: number };
+    return row.result === 1;
+  }
+
+  /**
+   * Checks if there are any posts older than the given cursor.
+   */
+  static hasOlder(query: SearchQuery, cursorId: number): boolean {
+    const { conditions, params } = this.buildConditions(query);
+    conditions.push("id < ?");
+    params.push(cursorId);
+    
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const sql = `SELECT EXISTS(SELECT 1 FROM posts ${whereClause}) as result`;
+    const row = db.query(sql).get(...params) as { result: number };
+    return row.result === 1;
   }
 
   /**
    * Counts total posts matching a SearchQuery.
    */
   static count(query: SearchQuery): number {
-    const conditions: string[] = [];
-    const params: any[] = [];
-
-    if (query.rating) {
-      conditions.push("rating = ?");
-      params.push(query.rating);
-    }
-
-    for (const tag of query.tags) {
-      const exists = tag.negated ? "NOT EXISTS" : "EXISTS";
-      conditions.push(`${exists} (
-        SELECT 1 FROM post_tags pt 
-        JOIN tags t ON pt.tag_id = t.id 
-        WHERE pt.post_id = posts.id 
-        AND t.name = ? 
-        AND t.namespace = ?
-      )`);
-      params.push(tag.name, tag.namespace);
-    }
+    const { conditions, params } = this.buildConditions(query);
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     const sql = `SELECT COUNT(*) as count FROM posts ${whereClause}`;
@@ -106,12 +157,12 @@ export class PostModel {
       const result = db.prepare(`
         INSERT INTO posts (
           hash, extension, mime_type, size_bytes, 
-          width, height, duration, rating, source, parent_id, has_children
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          width, height, duration, rating, source, parent_id, has_children, user_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         data.hash, data.extension, data.mime_type, data.size_bytes,
         data.width, data.height, data.duration, data.rating, data.source,
-        data.parent_id, data.has_children ? 1 : 0
+        data.parent_id, data.has_children ? 1 : 0, data.user_id || null
       );
 
       const postId = result.lastInsertRowid as number;
@@ -171,7 +222,7 @@ export class PostModel {
 
     const tags = this.getTags(postId);
 
-    await db.transaction(async () => {
+    db.transaction(() => {
       // Decrement tag counts
       for (const tag of tags) {
         TagModel.decrementCount(tag.id);
