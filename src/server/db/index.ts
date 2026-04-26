@@ -1,7 +1,11 @@
 import { Database } from "bun:sqlite";
-import { mkdir } from "node:fs/promises";
+import { mkdirSync } from "node:fs";
 import { PATHS } from "../util/paths";
 import { runMigrations } from "./util/migrate";
+
+// Ensure the data directory exists before opening the database
+// recursive: true ensures it doesn't throw if the directory already exists
+mkdirSync(PATHS.DATA, { recursive: true });
 
 export const db = new Database(PATHS.DB);
 
@@ -9,11 +13,6 @@ db.run("PRAGMA foreign_keys = ON;");
 db.run("PRAGMA journal_mode = WAL;");
 
 export async function initDb() {
-  try {
-    await mkdir(PATHS.DATA, { recursive: true });
-  } catch (e) {
-  }
-
   await runMigrations(db);
 }
 
