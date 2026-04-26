@@ -8,6 +8,8 @@ We use SQLite for its simplicity and performance in self-hosted environments. Th
 ### 2.1 `posts`
 Stores core media metadata.
 - `id`: INTEGER PRIMARY KEY AUTOINCREMENT
+- `parent_id`: INTEGER (Nullable, references `posts.id` for alt versions/children)
+- `has_children`: BOOLEAN DEFAULT 0 (Flag for faster hierarchy lookups)
 - `hash`: TEXT UNIQUE NOT NULL (MD5 or SHA256 for deduplication)
 - `extension`: TEXT NOT NULL (e.g., 'jpg', 'mp4')
 - `mime_type`: TEXT NOT NULL

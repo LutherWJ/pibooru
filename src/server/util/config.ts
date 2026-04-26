@@ -4,7 +4,9 @@ const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   PORT: z.string().default("3000").transform((val) => parseInt(val, 10)),
   COOKIE_SECRET: z.string().min(32, "COOKIE_SECRET must be at least 32 characters long"),
-  DB_PATH: z.string().optional(),
+  DATA_DIR: z.string().default("./data"),
+  FFMPEG_PATH: z.string().default("ffmpeg"),
+  FFPROBE_PATH: z.string().default("ffprobe"),
 });
 
 /**

@@ -1,6 +1,6 @@
 # Project Overview: MyBooru
 
-MyBooru is a lightweight, self-hosted Danbooru-style media board optimized for power users. It features a robust tag-based organization system, support for images and video, and a highly efficient keyboard-driven interface (`hjkl`/`wasd`).
+MyBooru is a lightweight, self-hosted Danbooru-style media board optimized for power users and resource-constrained environments (like Raspberry Pi). It features a robust tag-based organization system, support for images and video, and a highly efficient keyboard-driven interface (`hjkl`/`wasd`).
 
 ## Tech Stack
 - **Runtime**: Bun
@@ -42,7 +42,7 @@ bun run src/index.ts
 
 ### Media & Storage
 - **FFmpeg Only**: Do not add extra image processing libraries like Sharp. Use FFmpeg for all thumbnailing and metadata extraction.
-- **Sharded Storage**: Files are stored in `data/original/` and `data/thumbs/` using a 2-level cryptographic sharding strategy based on SHA256 hashes (e.g., `.../a1/b2/[hash].[ext]`).
+- **Sharded Storage**: Files are stored in the configured `DATA_DIR` under `original/` and `thumbs/` using a 2-level cryptographic sharding strategy based on SHA256 hashes (e.g., `.../a1/b2/[hash].[ext]`).
 - **WebP**: All thumbnails must be generated as `.webp`.
 
 ### Frontend
@@ -59,6 +59,7 @@ For deep dives, see the `docs/` directory:
 - `05-UI-UX-and-Interactions.md` (Visuals & Keyboard Logic)
 - `06-Security.md` (Zod, CSP, CSRF)
 - `07-Configurability-and-Storage.md` (Env Vars & Sharding)
+- `08-Version-Control-and-CI-CD.md` (Git, Actions, & Releases)
 
 ## General Rules
 - Ensure to always use the hono-jsx-patterns skill when writing JSX code

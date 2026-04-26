@@ -35,4 +35,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 hono-jsx-patterns/
 *.skill/
+db.sqlite
 
+
+data/

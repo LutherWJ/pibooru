@@ -1,0 +1,280 @@
+:root {
+  --bg-color: #151515;
+  --text-color: #ddd;
+  --link-color: #b4c7d9;
+  --link-hover-color: #e4f0f9;
+  --sidebar-width: 200px;
+  
+  --tag-general: #009be6;
+  --tag-artist: #ff8a8b;
+  --tag-copyright: #dd00dd;
+  --tag-character: #00aa00;
+  --tag-meta: #fd9200;
+  
+  --border-color: #333;
+  --header-bg: #222;
+  --subnav-bg: #1a1a1a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: verdana, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+a {
+  color: var(--link-color);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+  color: var(--link-hover-color);
+}
+
+h1, h2, h3 {
+  margin-top: 0;
+  font-weight: bold;
+}
+
+/* Layout */
+#top {
+  background-color: var(--header-bg);
+  padding: 0 10px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+#top h1 {
+  margin: 0;
+  font-size: 20px;
+  margin-right: 20px;
+}
+
+#top h1 a {
+  color: #fff;
+}
+
+#top menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 15px;
+}
+
+#top menu li {
+  display: inline;
+}
+
+#top menu a {
+  font-weight: bold;
+}
+
+#nav {
+  background-color: var(--subnav-bg);
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+#nav menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 10px;
+}
+
+#page {
+  display: flex;
+  padding: 20px 10px;
+  gap: 20px;
+}
+
+#sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+}
+
+#content {
+  flex-grow: 1;
+}
+
+/* Sidebar Sections */
+.sidebar-box {
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.sidebar-box h2 {
+  font-size: 14px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 5px;
+  padding-bottom: 2px;
+}
+
+/* Post Grid */
+.posts-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.post-thumbnail {
+  width: 150px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid transparent;
+  background-color: #222;
+  overflow: hidden;
+  position: relative;
+}
+
+.post-thumbnail:hover, .post-thumbnail.active-thumbnail {
+  border-color: var(--link-color);
+}
+
+.post-thumbnail.active-thumbnail {
+  border-color: #fff;
+}
+
+.post-thumbnail a {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.post-thumbnail img {
+  display: block;
+  max-width: 150px;
+  max-height: 150px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Tag List */
+ul.tag-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+ul.tag-list li {
+  margin-bottom: 2px;
+}
+
+.tag-type-general { color: var(--tag-general); }
+.tag-type-artist { color: var(--tag-artist); }
+.tag-type-copyright { color: var(--tag-copyright); }
+.tag-type-character { color: var(--tag-character); }
+.tag-type-meta { color: var(--tag-meta); }
+
+.text-red { color: #ff4d4d; }
+.text-red:hover { color: #ff1a1a; }
+
+/* Forms */
+input[type="text"] {
+  background-color: #000;
+  border: 1px solid var(--border-color);
+  color: #fff;
+  padding: 2px 5px;
+  width: 100%;
+}
+
+/* Post Detail */
+#image-container {
+  margin-top: 10px;
+  text-align: center;
+}
+
+#image-container img {
+  max-width: 100%;
+}
+
+.post-info {
+  margin-bottom: 15px;
+  color: #888;
+}
+
+/* Footer */
+footer {
+  margin-top: 40px;
+  padding: 20px;
+  text-align: center;
+  border-top: 1px solid var(--border-color);
+  color: #666;
+}
+
+/* Search Suggestions */
+#header-suggestions, #suggestions-container, #edit-suggestions-container {
+  position: absolute;
+  z-index: 100;
+  width: 100%;
+  max-width: 400px;
+  max-height: 300px;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  background-color: #222;
+  border: 1px solid var(--border-color);
+}
+
+.suggestion-item {
+  padding: 5px;
+  cursor: pointer;
+  background: #222;
+}
+
+.suggestion-item:hover, .suggestion-item.active {
+  background: #333 !important;
+}
+
+/* Paginator */
+#paginator {
+  margin-top: 20px;
+  padding: 10px 0;
+}
+
+#paginator menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#paginator menu li {
+  display: inline;
+}
+
+#paginator menu li a, #paginator menu li span {
+  padding: 2px 8px;
+  border: 1px solid transparent;
+}
+
+#paginator menu li.current-page a {
+  background-color: var(--header-bg);
+  border-color: var(--border-color);
+  color: #fff;
+  font-weight: bold;
+}
+
+#paginator menu li a:hover {
+  background-color: #333;
+  border-color: var(--border-color);
+  text-decoration: none;
+}

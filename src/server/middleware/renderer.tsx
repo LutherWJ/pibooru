@@ -1,28 +1,54 @@
-import { jsxRenderer } from 'hono/jsx-renderer'
+import { jsxRenderer } from 'hono/jsx-renderer';
 
 interface RendererProps {
-  children?: any;
   title?: string;
 }
 
-const BODY_STYLE = "bg-background text-foreground font-sans antialiased";
+/**
+ * PiBooru Global Layout Renderer
+ * Refactored to match Danbooru's classic layout and Dark Theme.
+ */
+export const renderer = jsxRenderer(({ children, title }: RendererProps & { children?: any }) => {
+  return (
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{title ? `${title} - PiBooru` : "PiBooru"}</title>
+        
+        <link rel="stylesheet" href="/public/css/main.css" />
+        <script src="/public/js/htmx.min.js" defer></script>
+        <script src="/public/dist/index.js" defer></script>
+      </head>
+      <body hx-boost="true">
+        <header id="top">
+          <h1><a href="/">PiBooru</a></h1>
+          <menu>
+            <li><a href="/">Posts</a></li>
+            <li><a href="/tags">Tags</a></li>
+            <li><a href="/upload">Upload</a></li>
+            <li><a href="https://github.com/danbooru/danbooru" target="_blank">Help</a></li>
+          </menu>
+        </header>
 
-export const renderer = jsxRenderer(({ children, title }: RendererProps) => {
-    return (
-        <html lang="en">
-            <head>
-                <meta charset="UTF-8" />
-                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                <meta name="theme-color" content="#2563eb" />
-                <title>{title || 'AlfredGo '}</title>
-                <link rel="manifest" href="/manifest.json" />
-                <link rel="stylesheet" href="/css/style.css" />
-                <script src="/htmx.min.js" defer></script>
-                <script src="/js/main.js" type="module" defer></script>
-            </head>
-            <body class={BODY_STYLE}>
-                {children}
-            </body>
-        </html>
-    )
+        <nav id="nav">
+          <menu>
+            <li><a href="/">Listing</a></li>
+            <li><a href="/upload">Upload</a></li>
+            <li><a href="/wiki_pages">Wiki</a></li>
+          </menu>
+        </nav>
+
+        <div id="page">
+          {children}
+        </div>
+
+        <footer>
+          <p>© 2026 PiBooru - Inspired by Danbooru</p>
+        </footer>
+      </body>
+    </html>
+  );
+}, {
+  docType: true
 });
