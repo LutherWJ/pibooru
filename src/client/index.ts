@@ -20,6 +20,7 @@
       document.addEventListener('click', (e) => {
         this.handleMouseClick(e);
         this.handleToggleVisibility(e);
+        this.handleModalClick(e);
       });
       document.addEventListener('focusout', (e) => this.handleFocusOut(e));
       document.addEventListener('focusin', (e) => this.handleFocusIn(e));
@@ -30,9 +31,37 @@
         this.cleanupMedia();
         this.autocompleteIndex = -1;
       });
+      
+      // Critical for Back button / History restoration
+      document.addEventListener('htmx:beforeHistorySave', () => this.cleanupMedia());
+      document.addEventListener('htmx:historyRestore', () => this.cleanupMedia());
+      window.addEventListener('popstate', () => this.cleanupMedia());
 
       // Initial focus sync
       this.syncFocus();
+    }
+
+    private handleModalClick(e: MouseEvent) {
+      const target = e.target as HTMLElement;
+      if (target.id === 'help-link' || target.closest('#help-link')) {
+        e.preventDefault();
+        this.toggleHelp();
+      }
+      if (target.id === 'help-modal' || target.classList.contains('close-modal')) {
+        this.hideHelp();
+      }
+    }
+
+    private toggleHelp() {
+      const modal = document.getElementById('help-modal');
+      if (modal) {
+        modal.style.display = modal.style.display === 'none' ? 'flex' : 'none';
+      }
+    }
+
+    private hideHelp() {
+      const modal = document.getElementById('help-modal');
+      if (modal) modal.style.display = 'none';
     }
 
     private handleToggleVisibility(e: MouseEvent) {
@@ -59,13 +88,23 @@
     }
 
     private cleanupMedia() {
+      // Find all media elements, even those not currently in the visible DOM but potentially leaked
       const mediaElements = document.querySelectorAll('video, audio');
       mediaElements.forEach((el) => {
-        const media = el as HTMLMediaElement;
-        media.pause();
-        media.src = ""; // Force clear the source to stop buffering
-        media.load();
-        media.remove();
+        try {
+          const media = el as HTMLMediaElement;
+          media.pause();
+          media.removeAttribute('src'); // Better than src = ""
+          media.load(); // Forces the browser to release the media resource
+          
+          // Only remove if it's actually in the DOM to avoid HTMX swap issues, 
+          // but we want it gone if it was leaked.
+          if (media.parentNode) {
+            media.remove();
+          }
+        } catch (e) {
+          console.error("Failed to cleanup media element:", e);
+        }
       });
     }
 
@@ -114,10 +153,44 @@
         case 'u':
           window.location.href = '/upload';
           break;
+        case '?':
+          this.toggleHelp();
+          break;
+        case 'z':
+          this.navigatePage('prev');
+          break;
+        case 'x':
+          this.navigatePage('next');
+          break;
+        case 'o':
+          this.openOriginal();
+          break;
+        case 'e':
+          this.focusTagEditor();
+          break;
         case 'escape':
-          this.resetFocus();
+          if (document.getElementById('help-modal')?.style.display === 'flex') {
+            this.hideHelp();
+          } else {
+            this.resetFocus();
+          }
           break;
       }
+    }
+
+    private navigatePage(dir: 'next' | 'prev') {
+      const link = document.querySelector(`#paginator a[rel="${dir}"]`) as HTMLElement;
+      if (link) link.click();
+    }
+
+    private openOriginal() {
+      const link = document.querySelector('section#options a[href^="/data/original/"]') as HTMLAnchorElement;
+      if (link) window.open(link.href, '_blank');
+    }
+
+    private focusTagEditor() {
+      const link = document.getElementById('edit-tags-link');
+      if (link) link.click(); // This will trigger the toggle logic
     }
 
     private handleInputKey(e: KeyboardEvent, input: HTMLInputElement | HTMLTextAreaElement) {

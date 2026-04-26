@@ -1,4 +1,5 @@
 import { jsxRenderer } from 'hono/jsx-renderer';
+import { HelpModal } from '../components/HelpModal';
 
 interface RendererProps {
   title?: string;
@@ -27,7 +28,7 @@ export const renderer = jsxRenderer(({ children, title }: RendererProps & { chil
             <li><a href="/">Posts</a></li>
             <li><a href="/tags">Tags</a></li>
             <li><a href="/upload">Upload</a></li>
-            <li><a href="https://github.com/danbooru/danbooru" target="_blank">Help</a></li>
+            <li><a href="#" id="help-link">Help (?)</a></li>
           </menu>
         </header>
 
@@ -46,6 +47,8 @@ export const renderer = jsxRenderer(({ children, title }: RendererProps & { chil
         <footer>
           <p>© 2026 PiBooru - Inspired by Danbooru</p>
         </footer>
+
+        <HelpModal />
       </body>
     </html>
   );
