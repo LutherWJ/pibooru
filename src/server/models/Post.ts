@@ -4,6 +4,7 @@ import { TagModel } from "./Tag";
 import type { SearchQuery } from "../util/SearchParser";
 import { unlink } from "node:fs/promises";
 import { MediaService } from "../services/MediaService";
+import { logger } from "../util/logger";
 
 /**
  * PostModel
@@ -251,7 +252,7 @@ export class PostModel {
       await unlink(originalPath);
       await unlink(thumbPath);
     } catch (e) {
-      console.error(`Failed to delete files for post ${postId}:`, e);
+      logger.error("DB", `Failed to delete files for post ${postId}`, { error: e });
     }
   }
 

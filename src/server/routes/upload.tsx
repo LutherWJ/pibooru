@@ -8,6 +8,7 @@ import { PostRatingSchema } from "../db/schema";
 import { extname, join } from "node:path";
 import { unlink, mkdir } from "node:fs/promises";
 import { PATHS } from "../util/paths";
+import { logger } from "../util/logger";
 
 const uploadApp = new Hono();
 uploadApp.get("/", (c) => c.render(<Upload />));
@@ -33,30 +34,50 @@ uploadApp.post(
     async (c) => {
         const { file, rating, source, tags: rawTags } = c.req.valid("form");
         let tempPath: string | null = null;
+        let preHashTempPath: string | null = null;
         let shardedPaths: { original: string; thumb: string } | null = null;
 
         try {
-            // 1. Calculate hash
-            const arrayBuffer = await file.arrayBuffer();
-            const buffer = Buffer.from(arrayBuffer);
-            const hash = new Bun.CryptoHasher("sha256").update(buffer).digest("hex");
+            // 1. Prepare for streaming
+            const extension = extname(file.name).toLowerCase();
+            const tempDir = join(PATHS.DATA, "temp");
+            await mkdir(tempDir, { recursive: true });
+
+            // We use a temporary filename until we have the hash
+            preHashTempPath = join(tempDir, `upload-${crypto.randomUUID()}${extension}`);
+            
+            const hasher = new Bun.CryptoHasher("sha256");
+            const fileWriter = Bun.file(preHashTempPath).writer();
+            
+            // 2. Stream the file to disk and calculate hash incrementally
+            // This prevents loading the entire file into memory (OOM safety)
+            const reader = file.stream().getReader();
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                hasher.update(value);
+                fileWriter.write(value);
+            }
+            fileWriter.end();
+            
+            const hash = hasher.digest("hex");
+            tempPath = join(tempDir, `${hash}${extension}`);
 
             // Check if already exists in DB
             const existing = PostModel.getByHash(hash);
             if (existing) {
+                await unlink(preHashTempPath);
+                preHashTempPath = null;
                 if (c.req.header("accept")?.includes("application/json")) {
                     return c.json({ success: true, postId: existing.id, redirectUrl: `/post/${existing.id}`, alreadyExists: true });
                 }
                 return c.redirect(`/post/${existing.id}`);
             }
 
-            // 2. Save to temporary location
-            const extension = extname(file.name).toLowerCase();
-            const tempDir = join(PATHS.DATA, "temp");
-            tempPath = join(tempDir, `${hash}${extension}`);
-
-            await mkdir(tempDir, { recursive: true });
-            await Bun.write(tempPath, buffer);
+            // Move to final temp path (named by hash)
+            await Bun.write(tempPath, Bun.file(preHashTempPath));
+            await unlink(preHashTempPath);
+            preHashTempPath = null;
 
             // 3. Process with MediaService (Sharding + Thumbnailing)
             const processed = await MediaService.processUpload(tempPath, hash, extension);
@@ -81,13 +102,24 @@ uploadApp.post(
                 user_id: null,
             }, rawTags);
 
+            logger.info("UPLOAD", `Successfully processed upload: ${postId}`, {
+                hash,
+                extension,
+                size: file.size
+            });
+
             if (c.req.header("accept")?.includes("application/json")) {
                 return c.json({ success: true, postId, redirectUrl: `/post/${postId}` });
             }
             return c.redirect(`/post/${postId}`);
 
         } catch (error) {
-            console.error("Upload failed:", error);
+            logger.error("UPLOAD", "Upload processing failed", {
+                fileName: file.name,
+                fileType: file.type,
+                fileSize: file.size,
+                error
+            });
             
             // ROLLBACK: Cleanup any files created during this failed attempt
             if (shardedPaths) {
@@ -101,11 +133,12 @@ uploadApp.post(
             }
             return c.text(message, 500);
         } finally {
-            // Cleanup temp file always
+            // Cleanup temp files always
+            if (preHashTempPath) {
+                try { await unlink(preHashTempPath); } catch {}
+            }
             if (tempPath) {
-                try {
-                    await unlink(tempPath);
-                } catch (e) { }
+                try { await unlink(tempPath); } catch {}
             }
         }
     });

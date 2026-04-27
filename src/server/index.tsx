@@ -27,11 +27,23 @@ import { TagSuggestions } from "./components/TagSuggestions";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 
+import { logger } from "./util/logger";
+
 // Initialize Database
-console.log("Initializing PiBooru...");
+logger.info("SYSTEM", "Initializing PiBooru...");
 await initDb();
 
 const app = new Hono<{ Variables: { user: User } }>();
+
+// Global Error Handler
+app.onError((err, c) => {
+    logger.error("SYSTEM", `Unhandled exception: ${err.message}`, {
+        url: c.req.url,
+        method: c.req.method,
+        error: err
+    });
+    return c.text("Internal Server Error", 500);
+});
 
 // Favicon - immediate return to stop 404s
 app.get('/favicon.ico', (c) => c.body(null, 204));
@@ -91,12 +103,13 @@ app.get('/data/*', async (c) => {
     const file = Bun.file(fullPath);
     const exists = await file.exists();
 
-    // Log the attempt to the console for debugging
-    console.log(`[MEDIA] ${exists ? 'SERVE' : '404  '} -> ${fullPath}`);
-
+    // Log the attempt for debugging
     if (!exists) {
+        logger.warn("MEDIA", `404 -> ${fullPath}`);
         return c.text('Not Found', 404);
     }
+
+    logger.debug("MEDIA", `SERVE -> ${fullPath}`);
 
     c.header('Cache-Control', 'public, max-age=31536000, immutable');
     return c.body(file as any);
@@ -146,35 +159,6 @@ app.post(
         }
         
         return c.render(<Login error="Invalid username or password" />, { title: "Login" });
-    }
-);
-
-app.get("/register", (c) => c.render(<Login mode="register" />, { title: "Register" }));
-app.post(
-    "/register",
-    zValidator("form", z.object({
-        username: z.string().min(3).max(32),
-        password: z.string().min(8)
-    })),
-    async (c) => {
-        const { username, password } = c.req.valid("form");
-        
-        if (UserModel.findByUsername(username)) {
-            return c.render(<Login mode="register" error="Username already exists" />, { title: "Register" });
-        }
-        
-        const userId = await UserModel.create(username, password);
-        if (userId) {
-            await setSignedCookie(c, "session_id", userId.toString(), CONFIG.COOKIE_SECRET, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "Lax",
-                maxAge: 60 * 60 * 24 * 30
-            });
-            return c.redirect("/");
-        }
-        
-        return c.render(<Login mode="register" error="Failed to create account" />, { title: "Register" });
     }
 );
 
@@ -354,7 +338,7 @@ app.delete(
 
 app.route("/upload", uploadApp);
 
-console.log(`PiBooru started on port ${CONFIG.PORT}`);
+logger.info("SYSTEM", `PiBooru started on port ${CONFIG.PORT}`);
 
 export default {
     port: CONFIG.PORT,

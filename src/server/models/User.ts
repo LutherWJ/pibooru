@@ -1,5 +1,6 @@
 import { db } from "../db";
 import type { User } from "../db/schema";
+import { logger } from "../util/logger";
 
 /**
  * UserModel
@@ -19,7 +20,7 @@ export class UserModel {
 
       return result.lastInsertRowid as number;
     } catch (e) {
-      console.error("Failed to create user:", e);
+      logger.error("DB", "Failed to create user", { username, error: e });
       return null;
     }
   }

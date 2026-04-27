@@ -2,6 +2,7 @@ import { join, dirname, extname } from "node:path";
 import { mkdir } from "node:fs/promises";
 import { CONFIG } from "../util/config";
 import { PATHS } from "../util/paths";
+import { logger } from "../util/logger";
 
 export interface MediaMetadata {
   width?: number;
@@ -15,7 +16,7 @@ export class MediaService {
    * Probes a file using ffprobe to extract metadata.
    */
   static async probe(filePath: string): Promise<MediaMetadata> {
-    const proc = Bun.spawn([
+    const args = [
       CONFIG.FFPROBE_PATH,
       "-v", "error",
       "-select_streams", "v:0",
@@ -23,27 +24,48 @@ export class MediaService {
       "-show_entries", "format=format_name,duration",
       "-of", "json",
       filePath
-    ]);
+    ];
+
+    const proc = Bun.spawn(args, { stderr: "pipe" });
 
     const text = await new Response(proc.stdout).text();
-    await proc.exited; // Ensure process is gone
+    const exitCode = await proc.exited;
     
-    const output = JSON.parse(text);
-    const stream = output.streams?.[0];
-    const format = output.format;
-
-    let mimeType = format?.format_name || "unknown";
-    // Normalize pipe-based format names
-    if (mimeType.endsWith("_pipe")) {
-      mimeType = mimeType.replace("_pipe", "");
+    if (exitCode !== 0) {
+      const errorText = await new Response(proc.stderr).text();
+      const msg = `ffprobe failed (code ${exitCode}): ${errorText}`;
+      logger.error("MEDIA", msg, {
+        command: args.join(" "),
+        file: filePath
+      });
+      throw new Error(msg);
     }
 
-    return {
-      width: stream?.width,
-      height: stream?.height,
-      duration: stream?.duration ? parseFloat(stream.duration) : (format?.duration ? parseFloat(format.duration) : undefined),
-      mimeType
-    };
+    try {
+      const output = JSON.parse(text);
+      const stream = output.streams?.[0];
+      const format = output.format;
+
+      let mimeType = format?.format_name || "unknown";
+      // Normalize pipe-based format names
+      if (mimeType.endsWith("_pipe")) {
+        mimeType = mimeType.replace("_pipe", "");
+      }
+
+      return {
+        width: stream?.width,
+        height: stream?.height,
+        duration: stream?.duration ? parseFloat(stream.duration) : (format?.duration ? parseFloat(format.duration) : undefined),
+        mimeType
+      };
+    } catch (e) {
+      const msg = `Failed to parse ffprobe output: ${e instanceof Error ? e.message : String(e)}`;
+      logger.error("MEDIA", msg, {
+        output: text,
+        file: filePath
+      });
+      throw new Error(msg);
+    }
   }
 
   /**
@@ -87,13 +109,21 @@ export class MediaService {
     const errorText = await new Response(proc.stderr).text();
 
     if (exitCode !== 0) {
+      logger.error("MEDIA", `FFmpeg thumbnail generation failed (code ${exitCode})`, {
+        command: args.join(" "),
+        stderr: errorText,
+        input: inputPath,
+        output: outputPath
+      });
       throw new Error(`FFmpeg failed (code ${exitCode}): ${errorText}`);
     }
 
     // Paranoia check: Does it actually exist and have size?
     const result = Bun.file(outputPath);
     if (!(await result.exists()) || result.size === 0) {
-      throw new Error(`FFmpeg reported success but result is missing or 0 bytes. Stderr: ${errorText}`);
+      const msg = `FFmpeg reported success but result is missing or 0 bytes. Stderr: ${errorText}`;
+      logger.error("MEDIA", msg, { command: args.join(" "), stderr: errorText });
+      throw new Error(msg);
     }
   }
 

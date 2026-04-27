@@ -75,6 +75,13 @@ describe("MediaService (FFmpeg)", () => {
     expect(meta.mimeType).toBe("webp");
   });
 
+  it("should throw an error for invalid files", async () => {
+    const invalidFile = join(TEST_DIR, "invalid.txt");
+    await Bun.write(invalidFile, "not a media file");
+    
+    await expect(MediaService.probe(invalidFile)).rejects.toThrow();
+  });
+
   it("should calculate correct sharded paths", () => {
     const hash = "a1b2c3d4e5f6";
     const path = MediaService.getShardedPath("original", hash, ".jpg");

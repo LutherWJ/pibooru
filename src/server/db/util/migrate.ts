@@ -2,9 +2,10 @@ import { Database } from "bun:sqlite";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { PATHS } from "../../util/paths";
+import { logger } from "../../util/logger";
 
 export async function runMigrations(db: Database) {
-  console.log("Checking for database migrations...");
+  logger.info("DB", "Checking for database migrations...");
 
   // Ensure migrations table exists
   db.run(`
@@ -25,7 +26,7 @@ export async function runMigrations(db: Database) {
 
   for (const file of migrationFiles) {
     if (!executedMigrations.has(file)) {
-      console.log(`Executing migration: ${file}`);
+      logger.info("DB", `Executing migration: ${file}`);
       const sql = await readFile(join(PATHS.MIGRATIONS, file), "utf8");
       
       // Execute as a transaction
@@ -34,9 +35,9 @@ export async function runMigrations(db: Database) {
         db.run("INSERT INTO _migrations (name) VALUES (?)", [file]);
       })();
       
-      console.log(`Migration ${file} completed successfully.`);
+      logger.info("DB", `Migration ${file} completed successfully.`);
     }
   }
 
-  console.log("Database is up to date.");
+  logger.info("DB", "Database is up to date.");
 }
