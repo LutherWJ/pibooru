@@ -1,7 +1,5 @@
-import { db } from "../src/server/db";
-import { MediaService } from "../src/server/services/MediaService";
-import { PATHS } from "../src/server/util/paths";
 import { stat } from "node:fs/promises";
+import { join } from "node:path";
 
 /**
  * regenerate_thumbnails.ts
@@ -10,17 +8,37 @@ import { stat } from "node:fs/promises";
 
 const args = Bun.argv.slice(2);
 let concurrency = 5;
+let dataDirOverride = "";
+
 for (let i = 0; i < args.length; i++) {
     if (args[i] === "--concurrency") concurrency = parseInt(args[++i], 10);
+    if (args[i] === "--data-dir") dataDirOverride = args[++i];
 }
+
+// CRITICAL: Set the environment variable BEFORE importing the DB or PATHS
+if (dataDirOverride) {
+    process.env.DATA_DIR = dataDirOverride;
+}
+
+// Now import the rest of the app
+const { db } = await import("../src/server/db");
+const { MediaService } = await import("../src/server/services/MediaService");
+const { PATHS } = await import("../src/server/util/paths");
 
 async function run() {
     console.log("--- Starting Thumbnail Regeneration ---");
-    console.log(`Data Directory: ${PATHS.DATA}`);
-    console.log(`Concurrency:    ${concurrency}`);
+    console.log(`Working Root:    ${PATHS.ROOT}`);
+    console.log(`Database Path:   ${PATHS.DB}`);
+    console.log(`Data Directory:  ${PATHS.DATA}`);
+    console.log(`Concurrency:     ${concurrency}`);
     
     const posts = db.query("SELECT id, hash, extension FROM posts").all() as any[];
     console.log(`Checking ${posts.length} posts...`);
+
+    if (posts.length === 0) {
+        console.log("No posts found in database. Is the Data Directory correct?");
+        return;
+    }
 
     const state = {
         missing: 0,
@@ -49,7 +67,7 @@ async function run() {
             try {
                 const o = await stat(originalPath);
                 if (o.size === 0) {
-                    console.error(`[ERROR] Post ${post.id}: Original file is 0 bytes.`);
+                    console.error(`[FAIL] Post ${post.id}: Original file is 0 bytes.`);
                     state.failed++;
                     return;
                 }
@@ -58,7 +76,7 @@ async function run() {
                 console.log(`[FIXED] Post ${post.id}`);
                 state.regenerated++;
             } catch (e: any) {
-                console.error(`[FAILED] Post ${post.id}: ${e.code === 'ENOENT' ? 'Original missing' : e.message}`);
+                console.error(`[FAIL] Post ${post.id}: ${e.code === 'ENOENT' ? 'Original missing' : e.message}`);
                 state.failed++;
             }
         }

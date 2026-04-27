@@ -242,9 +242,17 @@ app.get(
         const { q, tags } = c.req.valid("query");
         const input = q || tags || "";
 
-        // Get the last token
-        const tokens = input.trimEnd().split(/\s+/);
-        let lastToken = tokens[tokens.length - 1] || "";
+        // If the input ends with a space, the user is starting a new tag
+        let lastToken = "";
+        if (input.length > 0 && !input.endsWith(' ')) {
+            const tokens = input.trim().split(/\s+/);
+            lastToken = tokens[tokens.length - 1] || "";
+        }
+
+        if (!lastToken) {
+            // Return empty fragment to close the dropdown
+            return c.html("");
+        }
 
         // Handle negated tags
         if (lastToken.startsWith("-")) {
