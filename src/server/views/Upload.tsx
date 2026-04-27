@@ -27,6 +27,7 @@ export const Upload: FC = () => {
             method="post" 
             enctype="multipart/form-data"
             style="flex: 1; max-width: 500px;"
+            hx-boost="false"
           >
             <div style="margin-bottom: 15px;">
               <label style="display: block; font-weight: bold; margin-bottom: 5px;">Files</label>
