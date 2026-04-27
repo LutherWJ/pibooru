@@ -46,7 +46,6 @@ async function run() {
                 const s = await stat(thumbPath);
                 if (s.size === 0) {
                     needsRegen = true;
-                    // Delete the 0-byte file first
                     await unlink(thumbPath).catch(() => {});
                 }
             } catch (e) {
@@ -57,18 +56,20 @@ async function run() {
         if (needsRegen) {
             state.total++;
             try {
-                // Verify original exists
-                await stat(originalPath);
-                
+                // Verify original
+                const o = await stat(originalPath);
+                if (o.size === 0) throw new Error("Original file is 0 bytes");
+
                 await MediaService.generateThumbnail(originalPath, thumbPath);
                 
-                // Final verification
+                // CRITICAL: Stat it immediately to see what happened
                 const check = await stat(thumbPath);
                 if (check.size > 0) {
                     console.log(`[OK] Post ${post.id} (${check.size} bytes)`);
                     state.fixed++;
                 } else {
-                    throw new Error("Resulting file is still 0 bytes");
+                    console.error(`[FAIL] Post ${post.id}: FFmpeg reported success but file is 0 bytes!`);
+                    state.failed++;
                 }
             } catch (e: any) {
                 console.error(`[ERR] Post ${post.id}: ${e.message}`);
@@ -89,10 +90,9 @@ async function run() {
     await Promise.all(pool);
 
     console.log("\n--- Summary ---");
-    console.log(`Checked: ${posts.length}`);
-    console.log(`Skipped: ${state.skipped}`);
     console.log(`Fixed:   ${state.fixed}`);
     console.log(`Failed:  ${state.failed}`);
+    console.log(`Skipped: ${state.skipped}`);
 }
 
 run().catch(console.error);
