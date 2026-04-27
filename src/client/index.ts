@@ -35,59 +35,30 @@
       // Critical for Back button / History restoration
       document.addEventListener('htmx:beforeHistorySave', () => this.cleanupMedia());
       document.addEventListener('htmx:historyRestore', () => this.cleanupMedia());
-      window.addEventListener('popstate', () => {
-        this.cleanupMedia();
-        this.updateGalleryQuery();
-      });
-
-      // Track URL changes via HTMX
-      document.addEventListener('htmx:pushedIntoHistory', () => this.updateGalleryQuery());
-      document.addEventListener('htmx:replaceUrl', () => this.updateGalleryQuery());
-      document.addEventListener('htmx:afterSettle', () => {
-        this.updateGalleryQuery();
-        this.updateBackLink();
-      });
-
-      // Store gallery query for Escape key navigation
-      this.updateGalleryQuery();
-
-      // Update back button link if we are on a post page
-      this.updateBackLink();
+      window.addEventListener('popstate', () => this.cleanupMedia());
 
       // Initial focus sync
       this.syncFocus();
     }
 
-    private updateGalleryQuery() {
-      const path = window.location.pathname;
-      const search = window.location.search;
-      
-      // Save state for any page that isn't a post, data, or auth page
-      const isPost = path.startsWith('/post/');
-      const isData = path.startsWith('/data/');
-      const isAuth = path === '/login' || path === '/logout';
-      const isUpload = path === '/upload';
-
-      if (!isPost && !isData && !isAuth && !isUpload) {
-        const state = path + search;
-        sessionStorage.setItem('galleryQuery', state);
-        console.log('[KeyboardManager] Saved gallery state:', state);
-      }
-    }
-
-    private updateBackLink() {
-      if (window.location.pathname.startsWith('/post/')) {
-        const backBtn = document.getElementById('back-to-search') as HTMLAnchorElement;
-        if (backBtn) {
-          const lastState = sessionStorage.getItem('galleryQuery') || '/';
-          backBtn.href = lastState;
-          console.log('[KeyboardManager] Updated back-to-search href:', backBtn.href);
-        }
+    private goBack() {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = '/';
       }
     }
 
     private handleModalClick(e: MouseEvent) {
       const target = e.target as HTMLElement;
+
+      // Intercept Back to Gallery button
+      if (target.id === 'back-to-search' || target.closest('#back-to-search')) {
+        e.preventDefault();
+        this.goBack();
+        return;
+      }
+
       if (target.id === 'help-link' || target.closest('#help-link')) {
         e.preventDefault();
         this.toggleHelp();
@@ -218,15 +189,7 @@
             this.hideHelp();
           } else if (window.location.pathname.startsWith('/post/')) {
             e.preventDefault();
-            const backBtn = document.getElementById('back-to-search');
-            if (backBtn) {
-              console.log('[KeyboardManager] Escape pressed, clicking back-to-search button:', backBtn.getAttribute('href'));
-              backBtn.click();
-            } else {
-              const lastState = sessionStorage.getItem('galleryQuery') || '/';
-              console.log('[KeyboardManager] Escape pressed, back button not found, falling back to:', lastState);
-              window.location.href = lastState;
-            }
+            this.goBack();
           } else {
             this.resetFocus();
           }
