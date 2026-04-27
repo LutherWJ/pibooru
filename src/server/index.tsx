@@ -79,22 +79,15 @@ app.use(
 );
 
 // Static files (Code/CSS/JS)
-app.use('/public/*', serveStatic({ root: PATHS.ROOT }));
+app.use('/public/*', serveStatic({ root: './' }));
 
 // Serve media/data from the configured DATA_DIR
-// Restricted to original and thumbs subdirectories for security
-app.use('/data/original/*', (c, next) => {
-    return serveStatic({
+app.use('/data/*', (c, next) => {
+    const serve = serveStatic({
         root: PATHS.DATA,
-        rewriteRequestPath: (path) => path.replace(/^\/data/, '')
-    })(c, next);
-});
-
-app.use('/data/thumbs/*', (c, next) => {
-    return serveStatic({
-        root: PATHS.DATA,
-        rewriteRequestPath: (path) => path.replace(/^\/data/, '')
-    })(c, next);
+        rewriteRequestPath: (p) => p.replace(/^\/data/, ''),
+    });
+    return serve(c, next);
 });
 
 // CSRF Protection with bypass for the bulk uploader
