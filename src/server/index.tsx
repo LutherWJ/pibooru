@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
-import { logger } from "hono/logger";
+import { logger as honoLogger } from "hono/logger";
 import { csrf } from "hono/csrf";
 import { bodyLimit } from "hono/body-limit";
 import { secureHeaders } from "hono/secure-headers";
@@ -64,7 +64,7 @@ app.get('/offline', (c) => {
 });
 
 // Middleware
-app.use('*', logger());
+app.use('*', honoLogger());
 app.use(
     '*',
     bodyLimit({
