@@ -25,7 +25,10 @@ export class MediaService {
       filePath
     ]);
 
-    const output = await new Response(proc.stdout).json();
+    const text = await new Response(proc.stdout).text();
+    await proc.exited; // Ensure process is gone
+    
+    const output = JSON.parse(text);
     const stream = output.streams?.[0];
     const format = output.format;
 
