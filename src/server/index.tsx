@@ -52,7 +52,6 @@ app.get('/offline', (c) => {
 
 // Middleware
 app.use('*', logger());
-app.use('*', csrf());
 app.use(
     '*',
     secureHeaders({
@@ -68,6 +67,33 @@ app.use(
         },
     })
 );
+
+// Static files (Code/CSS/JS)
+app.use('/public/*', serveStatic({ root: PATHS.ROOT }));
+
+// Serve media/data from the configured DATA_DIR
+// Restricted to original and thumbs subdirectories for security
+app.use('/data/original/*', (c, next) => {
+    return serveStatic({
+        root: PATHS.DATA,
+        rewriteRequestPath: (path) => path.replace(/^\/data/, '')
+    })(c, next);
+});
+
+app.use('/data/thumbs/*', (c, next) => {
+    return serveStatic({
+        root: PATHS.DATA,
+        rewriteRequestPath: (path) => path.replace(/^\/data/, '')
+    })(c, next);
+});
+
+// CSRF Protection with bypass for the bulk uploader
+app.use('*', (c, next) => {
+    if (c.req.header('X-MyBooru-Uploader') === 'true') {
+        return next();
+    }
+    return csrf()(c, next);
+});
 
 // Global Rate Limiter
 const limiter = rateLimiter({
@@ -140,25 +166,6 @@ app.post(
 app.get("/logout", (c) => {
     deleteCookie(c, "session_id");
     return c.redirect("/login");
-});
-
-// Static files (Code/CSS/JS)
-app.use('/public/*', serveStatic({ root: './' }));
-
-// Serve media/data from the configured DATA_DIR
-// Restricted to original and thumbs subdirectories for security
-app.use('/data/original/*', (c, next) => {
-    return serveStatic({
-        root: PATHS.DATA,
-        rewriteRequestPath: (path) => path.replace(/^\/data/, '')
-    })(c, next);
-});
-
-app.use('/data/thumbs/*', (c, next) => {
-    return serveStatic({
-        root: PATHS.DATA,
-        rewriteRequestPath: (path) => path.replace(/^\/data/, '')
-    })(c, next);
 });
 
 // Routes

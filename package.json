@@ -1,11 +1,12 @@
 {
   "name": "mybooru",
-  "version": "0.5.2-beta",
+  "version": "0.5.3-beta",
   "module": "index.ts",
   "type": "module",
   "private": true,
   "scripts": {
-      "start": "bun src/server/index.tsx"
+      "start": "bun src/server/index.tsx",
+      "build": "bun build src/client/index.ts --outdir public/dist --minify"
   },
   "devDependencies": {
     "@types/bun": "latest"
