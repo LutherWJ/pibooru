@@ -29,6 +29,16 @@ export const renderer = jsxRenderer(({ children, title }: RendererProps & { chil
             <li><a href="/tags">Tags</a></li>
             <li><a href="/upload">Upload</a></li>
             <li><a href="#" id="help-link">Help (?)</a></li>
+            {c.var.user ? (
+              <>
+                <li class="user-info" style="margin-left: auto;">
+                  <span>{c.var.user.username}</span>
+                </li>
+                <li><a href="/logout">Logout</a></li>
+              </>
+            ) : (
+              <li style="margin-left: auto;"><a href="/login">Login</a></li>
+            )}
           </menu>
         </header>
 

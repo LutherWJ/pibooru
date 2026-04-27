@@ -7,25 +7,17 @@ import { rateLimiter } from "hono-rate-limiter";
 import { join } from "node:path";
 import { CONFIG } from "./util/config";
 import { PATHS } from "./util/paths";
-import { initDb } from "./db";
-
-import { renderer } from "./middleware/renderer";
-import { Home } from "./views/Home";
-import { PostDetail } from "./views/PostDetail";
-import { Tags } from "./views/Tags";
-import uploadApp from "./routes/upload";
-import { PostModel } from "./models/Post";
-import { TagModel } from "./models/Tag";
-import { SearchParser } from "./util/SearchParser";
-import { TagSuggestions } from "./components/TagSuggestions";
-import { z } from "zod";
-import { zValidator } from "@hono/zod-validator";
+import { deleteCookie, setSignedCookie } from "hono/cookie";
+import { authMiddleware } from "./middleware/auth";
+import { UserModel } from "./models/User";
+import { Login } from "./views/Login";
+import { User } from "./db/schema";
 
 // Initialize Database
 console.log("Initializing PiBooru...");
 await initDb();
 
-const app = new Hono();
+const app = new Hono<{ Variables: { user: User } }>();
 
 // Favicon - immediate return to stop 404s
 app.get('/favicon.ico', (c) => c.body(null, 204));
@@ -74,6 +66,68 @@ const limiter = rateLimiter({
 app.use("*", limiter);
 
 app.use('*', renderer);
+
+app.use('*', authMiddleware);
+
+// Authentication Routes
+app.get("/login", (c) => c.render(<Login />, { title: "Login" }));
+app.post(
+    "/login",
+    zValidator("form", z.object({
+        username: z.string().min(1),
+        password: z.string().min(1)
+    })),
+    async (c) => {
+        const { username, password } = c.req.valid("form");
+        const user = await UserModel.verifyPassword(username, password);
+        
+        if (user) {
+            await setSignedCookie(c, "session_id", user.id.toString(), CONFIG.COOKIE_SECRET, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                sameSite: "Lax",
+                maxAge: 60 * 60 * 24 * 30 // 30 days
+            });
+            return c.redirect("/");
+        }
+        
+        return c.render(<Login error="Invalid username or password" />, { title: "Login" });
+    }
+);
+
+app.get("/register", (c) => c.render(<Login mode="register" />, { title: "Register" }));
+app.post(
+    "/register",
+    zValidator("form", z.object({
+        username: z.string().min(3).max(32),
+        password: z.string().min(8)
+    })),
+    async (c) => {
+        const { username, password } = c.req.valid("form");
+        
+        if (UserModel.findByUsername(username)) {
+            return c.render(<Login mode="register" error="Username already exists" />, { title: "Register" });
+        }
+        
+        const userId = await UserModel.create(username, password);
+        if (userId) {
+            await setSignedCookie(c, "session_id", userId.toString(), CONFIG.COOKIE_SECRET, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                sameSite: "Lax",
+                maxAge: 60 * 60 * 24 * 30
+            });
+            return c.redirect("/");
+        }
+        
+        return c.render(<Login mode="register" error="Failed to create account" />, { title: "Register" });
+    }
+);
+
+app.get("/logout", (c) => {
+    deleteCookie(c, "session_id");
+    return c.redirect("/login");
+});
 
 // Static files (Code/CSS/JS)
 app.use('/public/*', serveStatic({ root: './' }));
