@@ -35,15 +35,40 @@
       // Critical for Back button / History restoration
       document.addEventListener('htmx:beforeHistorySave', () => this.cleanupMedia());
       document.addEventListener('htmx:historyRestore', () => this.cleanupMedia());
-      window.addEventListener('popstate', () => this.cleanupMedia());
+      window.addEventListener('popstate', () => {
+        this.cleanupMedia();
+        this.updateGalleryQuery();
+      });
+
+      // Track URL changes via HTMX
+      document.addEventListener('htmx:pushedIntoHistory', () => this.updateGalleryQuery());
+      document.addEventListener('htmx:replaceUrl', () => this.updateGalleryQuery());
 
       // Store gallery query for Escape key navigation
-      if (window.location.pathname === '/') {
-        sessionStorage.setItem('galleryQuery', window.location.search);
-      }
+      this.updateGalleryQuery();
+
+      // Update back button link if we are on a post page
+      document.addEventListener('htmx:load', () => this.updateBackLink());
+      this.updateBackLink();
 
       // Initial focus sync
       this.syncFocus();
+    }
+
+    private updateGalleryQuery() {
+      if (window.location.pathname === '/') {
+        sessionStorage.setItem('galleryQuery', window.location.search);
+      }
+    }
+
+    private updateBackLink() {
+      if (window.location.pathname.startsWith('/post/')) {
+        const backBtn = document.getElementById('back-to-search') as HTMLAnchorElement;
+        if (backBtn) {
+          const query = sessionStorage.getItem('galleryQuery');
+          backBtn.href = query ? `/${query}` : '/';
+        }
+      }
     }
 
     private handleModalClick(e: MouseEvent) {
@@ -177,9 +202,12 @@
           if (document.getElementById('help-modal')?.style.display === 'flex') {
             this.hideHelp();
           } else if (window.location.pathname.startsWith('/post/')) {
-            const query = sessionStorage.getItem('galleryQuery');
-            if (query !== null) {
-              window.location.href = `/${query}`;
+            const backBtn = document.getElementById('back-to-search');
+            if (backBtn) {
+              backBtn.click();
+            } else {
+              const query = sessionStorage.getItem('galleryQuery');
+              window.location.href = query ? `/${query}` : '/';
             }
           } else {
             this.resetFocus();

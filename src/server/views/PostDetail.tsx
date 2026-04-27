@@ -24,6 +24,9 @@ export const PostDetail: FC<PostDetailProps> = ({ post, tags }) => {
   return (
     <>
       <aside id="sidebar">
+        <div style="margin-bottom: 10px;">
+          <a href="/" id="back-to-search" class="button" style="width: 100%; text-align: center; display: block;">« Back to Gallery</a>
+        </div>
         <section id="tag-list" class="sidebar-box">
           <h2>Tags</h2>
           <ul class="tag-list">

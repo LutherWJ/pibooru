@@ -48,8 +48,11 @@ export class SearchParser {
             break;
           }
           case "limit": {
-            const l = parseInt(value, 10);
-            if (!isNaN(l)) query.limit = l;
+            let l = parseInt(value, 10);
+            if (!isNaN(l)) {
+              // Cap limit at 1000 for robustness
+              query.limit = Math.min(Math.max(1, l), 1000);
+            }
             break;
           }
           case "type": {
