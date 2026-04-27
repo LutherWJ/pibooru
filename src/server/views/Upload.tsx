@@ -20,7 +20,7 @@ export const Upload: FC = () => {
       <section id="content">
         <h1>Upload</h1>
         
-        <div id="upload-container" style="display: flex; gap: 20px; align-items: flex-start; margin-top: 20px;">
+        <div id="upload-container">
           <form 
             id="upload-form"
             action="/upload" 
@@ -93,7 +93,7 @@ export const Upload: FC = () => {
             </div>
           </form>
 
-          <div id="preview-container" style="flex: 1; border: 1px solid #333; background: #111; min-height: 400px; display: flex; align-items: center; justify-content: center; position: sticky; top: 10px; overflow: hidden;">
+          <div id="preview-container">
             <p id="preview-placeholder" style="color: #666;">No file selected</p>
             <div id="preview-content" style="display: none; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
                 {/* Images or videos will be injected here */}

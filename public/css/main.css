@@ -107,6 +107,7 @@ h1, h2, h3 {
 
 #content {
   flex-grow: 1;
+  min-width: 0; /* Prevent flex overflow */
 }
 
 /* Sidebar Sections */
@@ -124,14 +125,16 @@ h1, h2, h3 {
 
 /* Post Grid */
 .posts-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 15px;
+  justify-items: center;
 }
 
 .post-thumbnail {
-  width: 150px;
-  height: 150px;
+  width: 100%;
+  max-width: 180px;
+  aspect-ratio: 1 / 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -159,14 +162,103 @@ h1, h2, h3 {
 
 .post-thumbnail img {
   display: block;
-  max-width: 150px;
-  max-height: 150px;
+  max-width: 100%;
+  max-height: 100%;
   width: auto;
   height: auto;
   object-fit: contain;
 }
 
+/* Mobile Responsive Adjustments */
+/* Upload Page specific */
+#upload-container {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  margin-top: 20px;
+}
+
+#preview-container {
+  flex: 1;
+  border: 1px solid #333;
+  background: #111;
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: sticky;
+  top: 10px;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  #top {
+    height: auto;
+    padding: 10px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  #top h1 {
+    margin-right: 0;
+  }
+
+  #top menu {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 5px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #nav menu {
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #page {
+    flex-direction: column;
+    padding: 10px;
+  }
+
+  #sidebar {
+    width: 100%;
+  }
+
+  .sidebar-box {
+    margin-bottom: 15px;
+  }
+
+  .posts-container {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+  }
+
+  .help-modal-content {
+    padding: 15px;
+  }
+
+  .help-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  /* Upload Page specific */
+  #upload-container {
+    flex-direction: column;
+  }
+
+  #preview-container {
+    position: static !important;
+    min-height: 200px !important;
+    width: 100%;
+    order: -1; /* Show preview on top on mobile */
+  }
+}
+
 /* Tag List */
+
 ul.tag-list {
   list-style: none;
   margin: 0;
@@ -294,7 +386,35 @@ footer {
   text-decoration: none;
 }
 
-/* Help Modal */
+/* Tag Table */
+.tag-table tr:hover {
+  background-color: #1a1a1a;
+}
+
+.auth-container {
+  max-width: 400px;
+  width: 100%;
+  margin: 2rem auto;
+  padding: 20px;
+  border: 1px solid var(--border-color);
+  background: #1a1a1a;
+}
+
+@media (max-width: 768px) {
+  .auth-container {
+    width: 90%;
+    margin: 1rem auto;
+  }
+
+  .tag-table th:nth-child(2),
+  .tag-table td:nth-child(2) {
+    display: none; /* Hide namespace on mobile to save space */
+  }
+  
+  #image-container video, #image-container img {
+    max-height: none !important; /* Allow natural height on mobile */
+  }
+}
 #help-modal {
   position: fixed;
   top: 0;

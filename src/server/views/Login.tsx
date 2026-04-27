@@ -8,7 +8,7 @@ interface LoginProps {
 
 export const Login: FC<LoginProps> = ({ error, success, mode = "login" }) => {
   return (
-    <div class="auth-container" style="max-width: 400px; margin: 2rem auto; padding: 1rem; border: 1px solid #333; border-radius: 4px; background: #1a1a1a;">
+    <div class="auth-container">
       <h2 style="text-align: center; margin-bottom: 1.5rem;">{mode === "login" ? "Login" : "Register"}</h2>
 
       {error && <div style="color: #ff6b6b; background: #2d1a1a; padding: 0.5rem; margin-bottom: 1rem; border-radius: 4px; font-size: 0.9rem;">{error}</div>}
