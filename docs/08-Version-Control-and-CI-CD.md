@@ -5,6 +5,9 @@ To maintain a stable `main` branch, we follow a feature-branch workflow.
 
 - **Main Branch**: Always deployable. Protected from direct pushes.
 - **Feature Branches**: Named `feat/[feature-name]` or `fix/[bug-name]`.
+- **Pre-Push Validation**: Before pushing to any branch, you MUST verify that:
+    1. The code compiles and passes tests (`bun test`).
+    2. The server starts successfully (`bun start`) without runtime errors.
 - **Pull Requests**: Required for merging into `main`. Must pass CI checks (Lint, Typecheck, Test).
 
 ## 2. Commit Conventions
