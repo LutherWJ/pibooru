@@ -1,7 +1,9 @@
-import { join, isAbsolute } from "node:path";
+import { join, isAbsolute, dirname } from "node:path";
 import { CONFIG } from "./config";
 
-const ROOT = process.cwd();
+// Resolve ROOT based on the location of this file (src/server/util/paths.ts)
+// util -> server -> src -> ROOT
+const ROOT = join(import.meta.dir, "..", "..", "..");
 
 // Resolve the data directory (supports absolute paths for external drives)
 const DATA_ROOT = isAbsolute(CONFIG.DATA_DIR) 

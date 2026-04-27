@@ -24,6 +24,7 @@ async function walk(dir: string, filelist: string[] = []): Promise<string[]> {
 
 async function run() {
     console.log("--- Scanning Filesystem for Orphaned Files ---");
+    console.log(`Data Directory: ${PATHS.DATA}`);
 
     const originalDir = join(PATHS.DATA, "original");
     const thumbsDir = join(PATHS.DATA, "thumbs");

@@ -1,5 +1,6 @@
 import { db } from "../src/server/db";
 import { MediaService } from "../src/server/services/MediaService";
+import { PATHS } from "../src/server/util/paths";
 import { exists } from "node:fs/promises";
 
 /**
@@ -9,6 +10,7 @@ import { exists } from "node:fs/promises";
 
 async function run() {
     console.log("--- Starting Thumbnail Regeneration ---");
+    console.log(`Data Directory: ${PATHS.DATA}`);
     
     const posts = db.query("SELECT id, hash, extension FROM posts").all() as any[];
     console.log(`Checking ${posts.length} posts...`);
@@ -25,21 +27,21 @@ async function run() {
 
         if (!thumbExists) {
             missing++;
-            process.stdout.write(`[MISSING] Post ${post.id}: Regenerating... `);
+            console.log(`[MISSING] Post ${post.id}: hash ${post.hash.slice(0, 8)}...`);
             
             try {
                 const originalExists = await exists(originalPath);
                 if (!originalExists) {
-                    console.log("FAILED (Original file missing)");
+                    console.log(`  - FAILED: Original file missing at ${originalPath}`);
                     failed++;
                     continue;
                 }
 
                 await MediaService.generateThumbnail(originalPath, thumbPath);
-                console.log("OK");
+                console.log("  - OK: Thumbnail generated.");
                 regenerated++;
             } catch (e: any) {
-                console.log(`FAILED (${e.message})`);
+                console.log(`  - FAILED: ${e.message}`);
                 failed++;
             }
         }
