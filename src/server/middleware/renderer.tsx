@@ -9,7 +9,7 @@ interface RendererProps {
  * PiBooru Global Layout Renderer
  * Refactored to match Danbooru's classic layout and Dark Theme.
  */
-export const renderer = jsxRenderer(({ children, title }: RendererProps & { children?: any }) => {
+export const renderer = jsxRenderer(({ children, title }: RendererProps & { children?: any }, c) => {
   return (
     <html lang="en">
       <head>

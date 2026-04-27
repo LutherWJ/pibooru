@@ -7,11 +7,24 @@ import { rateLimiter } from "hono-rate-limiter";
 import { join } from "node:path";
 import { CONFIG } from "./util/config";
 import { PATHS } from "./util/paths";
+import { initDb } from "./db";
 import { deleteCookie, setSignedCookie } from "hono/cookie";
 import { authMiddleware } from "./middleware/auth";
 import { UserModel } from "./models/User";
 import { Login } from "./views/Login";
 import { User } from "./db/schema";
+
+import { renderer } from "./middleware/renderer";
+import { Home } from "./views/Home";
+import { PostDetail } from "./views/PostDetail";
+import { Tags } from "./views/Tags";
+import uploadApp from "./routes/upload";
+import { PostModel } from "./models/Post";
+import { TagModel } from "./models/Tag";
+import { SearchParser } from "./util/SearchParser";
+import { TagSuggestions } from "./components/TagSuggestions";
+import { z } from "zod";
+import { zValidator } from "@hono/zod-validator";
 
 // Initialize Database
 console.log("Initializing PiBooru...");
