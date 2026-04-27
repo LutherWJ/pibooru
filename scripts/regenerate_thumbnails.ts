@@ -1,9 +1,7 @@
-import { stat, unlink } from "node:fs/promises";
-import { join } from "node:path";
-
 /**
  * regenerate_thumbnails.ts
  * Scans the database for posts missing thumbnails and generates them.
+ * High-reliability version using Bun.file APIs.
  */
 
 const args = Bun.argv.slice(2);
@@ -25,54 +23,50 @@ const { MediaService } = await import("../src/server/services/MediaService");
 const { PATHS } = await import("../src/server/util/paths");
 
 async function run() {
-    console.log("--- Starting Thumbnail Regeneration ---");
+    console.log("--- Starting High-Reliability Thumbnail Regeneration ---");
     console.log(`Database: ${PATHS.DB}`);
     console.log(`Data Dir: ${PATHS.DATA}`);
-    console.log(`Force:    ${force}`);
     
     const posts = db.query("SELECT id, hash, extension FROM posts").all() as any[];
     console.log(`Checking ${posts.length} posts...\n`);
 
-    const state = { total: 0, fixed: 0, failed: 0, skipped: 0 };
+    const state = { fixed: 0, failed: 0, skipped: 0 };
 
     const processPost = async (post: any) => {
         const originalPath = MediaService.getShardedPath("original", post.hash, post.extension);
         const thumbPath = MediaService.getShardedPath("thumbs", post.hash, ".webp");
 
+        const originalFile = Bun.file(originalPath);
+        const thumbFile = Bun.file(thumbPath);
+
         let needsRegen = force;
         
         if (!needsRegen) {
-            try {
-                const s = await stat(thumbPath);
-                if (s.size === 0) {
-                    needsRegen = true;
-                    await unlink(thumbPath).catch(() => {});
-                }
-            } catch (e) {
+            const exists = await thumbFile.exists();
+            if (!exists || thumbFile.size === 0) {
                 needsRegen = true;
             }
         }
 
         if (needsRegen) {
-            state.total++;
             try {
                 // Verify original
-                const o = await stat(originalPath);
-                if (o.size === 0) throw new Error("Original file is 0 bytes");
+                if (!(await originalFile.exists()) || originalFile.size === 0) {
+                    throw new Error(`Original file missing or empty: ${originalPath}`);
+                }
 
                 await MediaService.generateThumbnail(originalPath, thumbPath);
                 
-                // CRITICAL: Stat it immediately to see what happened
-                const check = await stat(thumbPath);
-                if (check.size > 0) {
-                    console.log(`[OK] Post ${post.id} (${check.size} bytes)`);
+                // Re-verify immediately
+                const result = Bun.file(thumbPath);
+                if (await result.exists() && result.size > 0) {
+                    console.log(`[OK] Post ${post.id} -> ${result.size} bytes`);
                     state.fixed++;
                 } else {
-                    console.error(`[FAIL] Post ${post.id}: FFmpeg reported success but file is 0 bytes!`);
-                    state.failed++;
+                    throw new Error("FFmpeg finished but result file is still invalid");
                 }
             } catch (e: any) {
-                console.error(`[ERR] Post ${post.id}: ${e.message}`);
+                console.error(`[FAIL] Post ${post.id}: ${e.message}`);
                 state.failed++;
             }
         } else {

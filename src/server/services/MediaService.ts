@@ -84,10 +84,16 @@ export class MediaService {
     });
     
     const exitCode = await proc.exited;
+    const errorText = await new Response(proc.stderr).text();
 
     if (exitCode !== 0) {
-      const error = await new Response(proc.stderr).text();
-      throw new Error(`FFmpeg failed with exit code ${exitCode}. Stderr: ${error}`);
+      throw new Error(`FFmpeg failed (code ${exitCode}): ${errorText}`);
+    }
+
+    // Paranoia check: Does it actually exist and have size?
+    const result = Bun.file(outputPath);
+    if (!(await result.exists()) || result.size === 0) {
+      throw new Error(`FFmpeg reported success but result is missing or 0 bytes. Stderr: ${errorText}`);
     }
   }
 

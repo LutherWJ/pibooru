@@ -83,15 +83,21 @@ app.use('/public/*', serveStatic({ root: './' }));
 
 // Custom robust media server for external DATA_DIR
 app.get('/data/*', async (c) => {
-    const path = c.req.path.replace(/^\/data\//, '');
-    const fullPath = join(PATHS.DATA, path);
+    // Manually reconstruct the relative path from the URL
+    const url = new URL(c.req.url);
+    const pathPart = url.pathname.replace(/^\/data\//, '');
+    const fullPath = join(PATHS.DATA, pathPart);
+    
     const file = Bun.file(fullPath);
+    const exists = await file.exists();
 
-    if (!(await file.exists())) {
+    // Log the attempt to the console for debugging
+    console.log(`[MEDIA] ${exists ? 'SERVE' : '404  '} -> ${fullPath}`);
+
+    if (!exists) {
         return c.text('Not Found', 404);
     }
 
-    // Set caching headers for better performance
     c.header('Cache-Control', 'public, max-age=31536000, immutable');
     return c.body(file as any);
 });
