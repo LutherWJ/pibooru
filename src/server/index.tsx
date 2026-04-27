@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { logger } from "hono/logger";
 import { csrf } from "hono/csrf";
+import { bodyLimit } from "hono/body-limit";
 import { secureHeaders } from "hono/secure-headers";
 import { rateLimiter } from "hono-rate-limiter";
 import { join } from "node:path";
@@ -52,6 +53,15 @@ app.get('/offline', (c) => {
 
 // Middleware
 app.use('*', logger());
+app.use(
+    '*',
+    bodyLimit({
+        maxSize: 1024 * 1024 * 1024, // 1GB
+        onError: (c) => {
+            return c.text('File too large', 413);
+        },
+    })
+);
 app.use(
     '*',
     secureHeaders({
