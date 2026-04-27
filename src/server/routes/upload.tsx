@@ -122,9 +122,15 @@ uploadApp.post(
             });
             
             // ROLLBACK: Cleanup any files created during this failed attempt
+            // IMPORTANT: Only delete if the hash doesn't already exist in the DB 
+            // to avoid race conditions with concurrent duplicate uploads.
             if (shardedPaths) {
-                try { await unlink(shardedPaths.original); } catch {}
-                try { await unlink(shardedPaths.thumb); } catch {}
+                const hash = shardedPaths.original.split('/').pop()?.split('.')[0];
+                const exists = hash ? PostModel.getByHash(hash) : true;
+                if (!exists) {
+                    try { await unlink(shardedPaths.original); } catch {}
+                    try { await unlink(shardedPaths.thumb); } catch {}
+                }
             }
 
             const message = `Upload failed: ${error instanceof Error ? error.message : "Unknown error"}`;

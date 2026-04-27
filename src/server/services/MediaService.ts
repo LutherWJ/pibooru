@@ -134,7 +134,9 @@ export class MediaService {
   static getShardedPath(prefix: string, hash: string, extension: string): string {
     const l1 = hash.slice(0, 2);
     const l2 = hash.slice(2, 4);
-    return join(PATHS.DATA, prefix, l1, l2, `${hash}${extension}`);
+    // Ensure extension starts with a dot
+    const ext = extension.startsWith('.') ? extension : `.${extension}`;
+    return join(PATHS.DATA, prefix, l1, l2, `${hash}${ext}`);
   }
 
   /**
