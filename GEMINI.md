@@ -12,9 +12,13 @@ MyBooru is a lightweight, self-hosted Danbooru-style media board optimized for p
 
 ## Building and Running
 
+### System Dependencies
+- **FFmpeg**: Must be installed on the host system (`sudo apt install ffmpeg`).
+
 ### Installation
 ```bash
 bun install
+bun run build
 ```
 
 ### Development
