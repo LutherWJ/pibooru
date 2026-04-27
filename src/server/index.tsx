@@ -81,13 +81,19 @@ app.use(
 // Static files (Code/CSS/JS)
 app.use('/public/*', serveStatic({ root: './' }));
 
-// Serve media/data from the configured DATA_DIR
-app.use('/data/*', (c, next) => {
-    const serve = serveStatic({
-        root: PATHS.DATA,
-        rewriteRequestPath: (p) => p.replace(/^\/data/, ''),
-    });
-    return serve(c, next);
+// Custom robust media server for external DATA_DIR
+app.get('/data/*', async (c) => {
+    const path = c.req.path.replace(/^\/data\//, '');
+    const fullPath = join(PATHS.DATA, path);
+    const file = Bun.file(fullPath);
+
+    if (!(await file.exists())) {
+        return c.text('Not Found', 404);
+    }
+
+    // Set caching headers for better performance
+    c.header('Cache-Control', 'public, max-age=31536000, immutable');
+    return c.body(file as any);
 });
 
 // CSRF Protection with bypass for the bulk uploader
