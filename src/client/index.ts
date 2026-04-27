@@ -43,12 +43,15 @@
       // Track URL changes via HTMX
       document.addEventListener('htmx:pushedIntoHistory', () => this.updateGalleryQuery());
       document.addEventListener('htmx:replaceUrl', () => this.updateGalleryQuery());
+      document.addEventListener('htmx:afterSettle', () => {
+        this.updateGalleryQuery();
+        this.updateBackLink();
+      });
 
       // Store gallery query for Escape key navigation
       this.updateGalleryQuery();
 
       // Update back button link if we are on a post page
-      document.addEventListener('htmx:load', () => this.updateBackLink());
       this.updateBackLink();
 
       // Initial focus sync
@@ -57,7 +60,9 @@
 
     private updateGalleryQuery() {
       if (window.location.pathname === '/') {
-        sessionStorage.setItem('galleryQuery', window.location.search);
+        const query = window.location.search;
+        sessionStorage.setItem('galleryQuery', query);
+        console.log('[KeyboardManager] Updated galleryQuery:', query);
       }
     }
 
@@ -65,8 +70,9 @@
       if (window.location.pathname.startsWith('/post/')) {
         const backBtn = document.getElementById('back-to-search') as HTMLAnchorElement;
         if (backBtn) {
-          const query = sessionStorage.getItem('galleryQuery');
-          backBtn.href = query ? `/${query}` : '/';
+          const query = sessionStorage.getItem('galleryQuery') || '';
+          backBtn.href = `/${query}`;
+          console.log('[KeyboardManager] Updated back-to-search href:', backBtn.href);
         }
       }
     }
@@ -202,12 +208,15 @@
           if (document.getElementById('help-modal')?.style.display === 'flex') {
             this.hideHelp();
           } else if (window.location.pathname.startsWith('/post/')) {
+            e.preventDefault();
             const backBtn = document.getElementById('back-to-search');
             if (backBtn) {
+              console.log('[KeyboardManager] Escape pressed, clicking back-to-search button');
               backBtn.click();
             } else {
-              const query = sessionStorage.getItem('galleryQuery');
-              window.location.href = query ? `/${query}` : '/';
+              const query = sessionStorage.getItem('galleryQuery') || '';
+              console.log('[KeyboardManager] Escape pressed, back button not found, falling back to href:', `/${query}`);
+              window.location.href = `/${query}`;
             }
           } else {
             this.resetFocus();
