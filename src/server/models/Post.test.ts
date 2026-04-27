@@ -63,6 +63,21 @@ describe("PostModel Search", () => {
       has_children: false,
       user_id: null
     }, "cat dog");
+
+    PostModel.create({
+      hash: "4".repeat(64),
+      extension: "mp4",
+      mime_type: "video/mp4",
+      size_bytes: 400,
+      width: 400,
+      height: 400,
+      duration: 10,
+      rating: "s",
+      source: "",
+      parent_id: null,
+      has_children: false,
+      user_id: null
+    }, "video_tag");
   });
 
   it("finds posts by single tag", () => {
@@ -97,6 +112,20 @@ describe("PostModel Search", () => {
     const results = PostModel.search(query);
     expect(results.length).toBe(1);
     expect(results[0].hash).toBe("2".repeat(64));
+  });
+
+  it("filters by type:video", () => {
+    const query = SearchParser.parse("type:video");
+    const results = PostModel.search(query);
+    expect(results.length).toBe(1);
+    expect(results[0].mime_type).toBe("video/mp4");
+  });
+
+  it("filters by type:image", () => {
+    const query = SearchParser.parse("type:image");
+    const results = PostModel.search(query);
+    expect(results.length).toBe(3);
+    expect(results.every(r => r.mime_type.startsWith("image/"))).toBe(true);
   });
 
   it("combines everything", () => {

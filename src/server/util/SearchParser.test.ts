@@ -52,14 +52,23 @@ describe("SearchParser", () => {
     expect(query.order).toBe("id_desc");
   });
 
+  it("parses type metatag", () => {
+    const queryVideo = SearchParser.parse("type:video");
+    expect(queryVideo.type).toBe("video");
+
+    const queryImage = SearchParser.parse("type:image");
+    expect(queryImage.type).toBe("image");
+  });
+
   it("handles complex queries", () => {
-    const query = SearchParser.parse("cat artist:miku -dog r:e limit:20");
+    const query = SearchParser.parse("cat artist:miku -dog r:e type:video limit:20");
     expect(query.tags).toEqual([
       { name: "cat", namespace: "general", negated: false },
       { name: "miku", namespace: "artist", negated: false },
       { name: "dog", namespace: "general", negated: true }
     ]);
     expect(query.rating).toBe("e");
+    expect(query.type).toBe("video");
     expect(query.limit).toBe(20);
   });
 });

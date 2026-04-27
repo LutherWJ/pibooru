@@ -22,6 +22,14 @@ export class PostModel {
       params.push(query.rating);
     }
 
+    if (query.type) {
+      if (query.type === "video") {
+        conditions.push("mime_type LIKE 'video/%'");
+      } else if (query.type === "image") {
+        conditions.push("mime_type LIKE 'image/%'");
+      }
+    }
+
     for (const tag of query.tags) {
       const exists = tag.negated ? "NOT EXISTS" : "EXISTS";
       conditions.push(`${exists} (

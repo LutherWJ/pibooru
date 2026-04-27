@@ -11,6 +11,7 @@ export interface SearchQuery {
   rating?: PostRating;
   limit?: number;
   order?: string;
+  type?: 'video' | 'image';
   before_id?: number;
   after_id?: number;
 }
@@ -23,6 +24,7 @@ export class SearchParser {
    * - "-tag" : Exclude tag
    * - "namespace:tag" : Specific namespace
    * - "rating:s/q/e" : Filter by rating
+   * - "type:video/image" : Filter by media type
    */
   static parse(input: string): SearchQuery {
     const tokens = input.split(/\s+/).filter(t => t.length > 0);
@@ -48,6 +50,13 @@ export class SearchParser {
           case "limit": {
             const l = parseInt(value, 10);
             if (!isNaN(l)) query.limit = l;
+            break;
+          }
+          case "type": {
+            const t = value.toLowerCase();
+            if (t === "video" || t === "image") {
+              query.type = t;
+            }
             break;
           }
           case "order": {
