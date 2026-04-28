@@ -11,12 +11,17 @@ export class TagModel {
    * Does NOT increment post_count.
    */
   static getOrCreate(name: string, namespace: string = "general"): number {
+    if (!name) throw new Error("Tag name cannot be empty");
+
     db.prepare(`
       INSERT OR IGNORE INTO tags (name, namespace, post_count) 
       VALUES (?, ?, 0)
     `).run(name, namespace);
 
-    const tag = db.query("SELECT id FROM tags WHERE name = ? AND namespace = ?").get(name, namespace) as { id: number };
+    const tag = db.query("SELECT id FROM tags WHERE name = ? AND namespace = ?").get(name, namespace) as { id: number } | undefined;
+    if (!tag) {
+      throw new Error(`Failed to get or create tag ${namespace}:${name}`);
+    }
     return tag.id;
   }
 
@@ -83,19 +88,47 @@ export class TagModel {
   }
 
   /**
+   * Internal helper to resolve namespace and name from a string.
+   */
+  private static resolveNamespace(input: string): { name: string, namespace: string } {
+    let name = input;
+    let namespace = "general";
+
+    if (input.includes(":") && !input.startsWith(":")) {
+      const parts = input.split(":");
+      const possibleNamespace = parts[0];
+      const validNamespaces = ['artist', 'character', 'copyright', 'meta', 'general'];
+      const aliases: Record<string, string> = {
+        'art': 'artist',
+        'char': 'character',
+        'copy': 'copyright',
+      };
+      
+      let namespaceToUse = possibleNamespace;
+      if (aliases[possibleNamespace]) {
+        namespaceToUse = aliases[possibleNamespace];
+      }
+
+      if (validNamespaces.includes(namespaceToUse)) {
+        namespace = namespaceToUse;
+        name = parts.slice(1).join(":");
+      }
+    }
+
+    if (name.startsWith(":")) {
+      name = name.substring(1);
+    }
+
+    return { name: name.trim(), namespace };
+  }
+
+  /**
    * Parses a raw tag string (e.g. "artist:picasso") into name and namespace.
    */
   static parseRaw(raw: string): { name: string; namespace: string } {
-    let name = raw.toLowerCase();
-    let namespace = "general";
-
-    if (name.includes(":")) {
-      const parts = name.split(":");
-      namespace = parts[0] || "general";
-      name = parts.slice(1).join(":");
-    }
-
-    return { name, namespace };
+    let input = raw.trim().toLowerCase();
+    if (!input) return { name: "", namespace: "general" };
+    return this.resolveNamespace(input);
   }
 
   /**
@@ -106,17 +139,10 @@ export class TagModel {
   static search(prefix: string, limit: number = 10): Tag[] {
     if (!prefix) return [];
 
-    let nameQuery = prefix.toLowerCase();
-    let namespace = null;
+    let input = prefix.toLowerCase().trim();
+    const { name: nameQuery, namespace } = this.resolveNamespace(input);
 
-    // Check if the prefix includes a namespace search
-    if (nameQuery.includes(":")) {
-      const parts = nameQuery.split(":", 2);
-      namespace = parts[0];
-      nameQuery = parts[1];
-    }
-
-    if (namespace) {
+    if (namespace !== "general" || input.includes("general:")) {
       return db.query(`
         SELECT * FROM tags 
         WHERE namespace = ? AND name LIKE ? 

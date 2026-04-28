@@ -50,7 +50,7 @@ export const renderer = jsxRenderer(({ children, title }: RendererProps & { chil
           </menu>
         </nav>
 
-        <div id="page">
+        <div id="page" hx-history-elt>
           {children}
         </div>
 

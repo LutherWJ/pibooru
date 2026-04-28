@@ -34,7 +34,11 @@
       
       // Critical for Back button / History restoration
       document.addEventListener('htmx:beforeHistorySave', () => this.cleanupMedia());
-      document.addEventListener('htmx:historyRestore', () => this.cleanupMedia());
+      document.addEventListener('htmx:historyRestore', () => {
+        this.cleanupMedia();
+        // Delay slightly to allow the DOM to settle
+        setTimeout(() => this.syncFocus(), 10);
+      });
       window.addEventListener('popstate', () => this.cleanupMedia());
 
       // Initial focus sync
@@ -42,9 +46,11 @@
     }
 
     private goBack() {
+      // If we have history within the app, go back
       if (window.history.length > 1) {
         window.history.back();
       } else {
+        // Fallback for if post was opened in a new tab
         window.location.href = '/';
       }
     }
@@ -96,7 +102,12 @@
             // Focus textarea if opening the edit form
             if (isHidden) {
               const textarea = targetEl.querySelector('textarea');
-              if (textarea) textarea.focus();
+              if (textarea) {
+                textarea.focus();
+                // Move cursor to end
+                const len = textarea.value.length;
+                textarea.setSelectionRange(len, len);
+              }
             }
           }
         }
@@ -182,6 +193,7 @@
           this.openOriginal();
           break;
         case 'e':
+          e.preventDefault();
           this.focusTagEditor();
           break;
         case 'escape':

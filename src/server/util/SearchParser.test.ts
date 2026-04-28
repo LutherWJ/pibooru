@@ -28,7 +28,7 @@ describe("SearchParser", () => {
   it("parses negated namespaced tags", () => {
     const query = SearchParser.parse("-char:miku");
     expect(query.tags).toEqual([
-      { name: "miku", namespace: "char", negated: true }
+      { name: "miku", namespace: "character", negated: true }
     ]);
   });
 

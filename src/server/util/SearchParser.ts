@@ -78,14 +78,45 @@ export class SearchParser {
           }
           default: {
             // Namespaced tag (e.g., artist:picasso or -artist:picasso)
-            let namespace = key;
+            let token = key + ":" + value;
             let negated = false;
-            if (namespace.startsWith("-")) {
+            
+            if (token.startsWith("-")) {
               negated = true;
-              namespace = namespace.substring(1);
+              token = token.substring(1);
             }
+
+            // Simple namespace resolution
+            let namespace = "general";
+            let name = token;
+
+            if (token.includes(":") && !token.startsWith(":")) {
+              const parts = token.split(":");
+              const possibleNamespace = parts[0];
+              const validNamespaces = ['artist', 'character', 'copyright', 'meta', 'general'];
+              const aliases: Record<string, string> = {
+                'art': 'artist',
+                'char': 'character',
+                'copy': 'copyright',
+              };
+              
+              let namespaceToUse = possibleNamespace;
+              if (aliases[possibleNamespace]) {
+                namespaceToUse = aliases[possibleNamespace];
+              }
+
+              if (validNamespaces.includes(namespaceToUse)) {
+                namespace = namespaceToUse;
+                name = parts.slice(1).join(":");
+              }
+            }
+
+            if (name.startsWith(":")) {
+               name = name.substring(1);
+            }
+
             query.tags.push({
-              name: value.toLowerCase(),
+              name: name.toLowerCase(),
               namespace,
               negated
             });
