@@ -145,13 +145,28 @@
     private handleKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement;
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      const key = e.key.toLowerCase();
 
       if (isInput) {
+        // Special case: if focused in an input on a post page, Escape should still go back
+        // UNLESS the handleInputKey handles it (e.g. for closing suggestions)
+        if (key === 'escape') {
+          const suggestionsContainer = target.parentElement?.querySelector('#suggestions-container, #edit-suggestions-container, #header-suggestions');
+          const hasSuggestions = suggestionsContainer && suggestionsContainer.children.length > 0;
+          
+          if (!hasSuggestions && window.location.pathname.startsWith('/post/')) {
+            e.preventDefault();
+            (target as HTMLInputElement | HTMLTextAreaElement).blur();
+            this.goBack();
+            return;
+          }
+        }
+        
         this.handleInputKey(e, target as HTMLInputElement | HTMLTextAreaElement);
         return;
       }
 
-      switch (e.key.toLowerCase()) {
+      switch (key) {
         // Navigation
         case 'h': case 'arrowleft': case 'a':
           this.moveFocus(-1);
