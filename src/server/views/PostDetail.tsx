@@ -25,7 +25,7 @@ export const PostDetail: FC<PostDetailProps> = ({ post, tags }) => {
     <>
       <aside id="sidebar">
         <div style="margin-bottom: 10px;">
-          <a href="javascript:history.back()" id="back-to-search" class="button" style="width: 100%; text-align: center; display: block;" hx-disable="true">« Back to Gallery</a>
+          <a href="/" id="back-to-search" class="button" style="width: 100%; text-align: center; display: block;" hx-disable="true">« Back to Gallery</a>
         </div>
         <section id="tag-list" class="sidebar-box">
           <h2>Tags</h2>
@@ -73,6 +73,8 @@ export const PostDetail: FC<PostDetailProps> = ({ post, tags }) => {
                 class="text-red"
                 hx-delete={`/post/${post.id}`}
                 hx-confirm="Are you sure you want to delete this post?"
+                hx-indicator="this"
+                hx-disabled-elt="this"
               >
                 Delete post
               </a>

@@ -32,6 +32,11 @@
         this.autocompleteIndex = -1;
       });
       
+      // Sync focus after swap (e.g. navigating pages via hx-boost)
+      document.addEventListener('htmx:afterSwap', () => {
+        this.syncFocus();
+      });
+
       // Critical for Back button / History restoration
       document.addEventListener('htmx:beforeHistorySave', () => this.cleanupMedia());
       document.addEventListener('htmx:historyRestore', () => {
@@ -86,12 +91,18 @@
       if (modal) modal.style.display = 'none';
     }
 
-    private handleToggleVisibility(e: MouseEvent) {
-      const target = e.target as HTMLElement;
-      const toggleTrigger = target.closest('[data-toggle-visibility]') as HTMLElement;
+    private handleToggleVisibility(e: MouseEvent | null, triggerSelector?: string) {
+      let toggleTrigger: HTMLElement | null = null;
+      
+      if (e) {
+        e.preventDefault();
+        const target = e.target as HTMLElement;
+        toggleTrigger = target.closest('[data-toggle-visibility]') as HTMLElement;
+      } else if (triggerSelector) {
+        toggleTrigger = document.querySelector(triggerSelector);
+      }
       
       if (toggleTrigger) {
-        e.preventDefault();
         const selector = toggleTrigger.getAttribute('data-toggle-visibility');
         if (selector) {
           const targetEl = document.querySelector(selector) as HTMLElement;
@@ -103,10 +114,19 @@
             if (isHidden) {
               const textarea = targetEl.querySelector('textarea');
               if (textarea) {
-                textarea.focus();
-                // Move cursor to end
-                const len = textarea.value.length;
-                textarea.setSelectionRange(len, len);
+                // Use requestAnimationFrame to ensure focus happens AFTER the current event loop
+                // this prevents the hotkey character (e.g. 'e') from being typed into the box.
+                requestAnimationFrame(() => {
+                  textarea.focus();
+                  // Move cursor to end
+                  const len = textarea.value.length;
+                  textarea.setSelectionRange(len, len);
+                });
+              }
+            } else {
+              // If closing, move focus back to the link that opened it to avoid focus loss
+              if (triggerSelector || (e && e.target)) {
+                (toggleTrigger as HTMLElement).focus();
               }
             }
           }
@@ -121,14 +141,11 @@
         try {
           const media = el as HTMLMediaElement;
           media.pause();
-          media.removeAttribute('src'); // Better than src = ""
+          media.src = ""; // Clear src to stop network activity
           media.load(); // Forces the browser to release the media resource
           
-          // Only remove if it's actually in the DOM to avoid HTMX swap issues, 
-          // but we want it gone if it was leaked.
-          if (media.parentNode) {
-            media.remove();
-          }
+          // We DO NOT remove from DOM here anymore as it can disrupt HTMX's swap tracking
+          // The swap itself will handle removal of the parent elements.
         } catch (e) {
           console.error("Failed to cleanup media element:", e);
         }
@@ -140,6 +157,15 @@
       if (target.matches(this.gridSelector)) {
         this.syncFocus();
       }
+
+      // If focusing a tag search input, trigger suggestions if there's content
+      if (target.tagName === 'INPUT' && target.id === 'tags') {
+        const input = target as HTMLInputElement;
+        if (input.value.length > 0) {
+          // Manually trigger HTMX keyup to show suggestions
+          (window as any).htmx.trigger(input, 'keyup');
+        }
+      }
     }
 
     private handleKeyDown(e: KeyboardEvent) {
@@ -147,21 +173,51 @@
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
       const key = e.key.toLowerCase();
 
-      if (isInput) {
-        // Special case: if focused in an input on a post page, Escape should still go back
-        // UNLESS the handleInputKey handles it (e.g. for closing suggestions)
-        if (key === 'escape') {
-          const suggestionsContainer = target.parentElement?.querySelector('#suggestions-container, #edit-suggestions-container, #header-suggestions');
-          const hasSuggestions = suggestionsContainer && suggestionsContainer.children.length > 0;
-          
-          if (!hasSuggestions && window.location.pathname.startsWith('/post/')) {
-            e.preventDefault();
-            (target as HTMLInputElement | HTMLTextAreaElement).blur();
-            this.goBack();
-            return;
-          }
+      // Escape key hierarchy
+      if (key === 'escape') {
+        // 1. Help Modal
+        if (document.getElementById('help-modal')?.style.display === 'flex') {
+          this.hideHelp();
+          e.preventDefault();
+          return;
         }
-        
+
+        // 2. Clear Suggestions (if active)
+        const suggestionsContainer = document.querySelector('#suggestions-container, #edit-suggestions-container, #header-suggestions');
+        if (suggestionsContainer && suggestionsContainer.children.length > 0) {
+          this.clearAutocomplete(suggestionsContainer);
+          e.preventDefault();
+          return;
+        }
+
+        // 3. Close Tag Editor
+        const editForm = document.getElementById('edit-tags-form');
+        if (editForm && editForm.style.display !== 'none') {
+          this.handleToggleVisibility(null, '#edit-tags-link');
+          e.preventDefault();
+          return;
+        }
+
+        // 4. Blur Input
+        if (isInput) {
+          target.blur();
+          e.preventDefault();
+          return;
+        }
+
+        // 5. Navigate Back (only if none of the above and on post page)
+        if (window.location.pathname.startsWith('/post/')) {
+          e.preventDefault();
+          this.goBack();
+          return;
+        }
+
+        // Default: reset grid focus
+        this.resetFocus();
+        return;
+      }
+
+      if (isInput) {
         this.handleInputKey(e, target as HTMLInputElement | HTMLTextAreaElement);
         return;
       }
@@ -211,16 +267,6 @@
           e.preventDefault();
           this.focusTagEditor();
           break;
-        case 'escape':
-          if (document.getElementById('help-modal')?.style.display === 'flex') {
-            this.hideHelp();
-          } else if (window.location.pathname.startsWith('/post/')) {
-            e.preventDefault();
-            this.goBack();
-          } else {
-            this.resetFocus();
-          }
-          break;
       }
     }
 
@@ -241,16 +287,10 @@
 
     private handleInputKey(e: KeyboardEvent, input: HTMLInputElement | HTMLTextAreaElement) {
       const suggestionsContainer = input.parentElement?.querySelector('#suggestions-container, #edit-suggestions-container, #header-suggestions');
-      if (!suggestionsContainer) return;
-
-      const suggestions = Array.from(suggestionsContainer.querySelectorAll('.suggestion-item')) as HTMLElement[];
       
-      if (e.key === 'Escape') {
-        input.blur();
-        this.clearAutocomplete(suggestionsContainer);
-        return;
-      }
-
+      // We don't return early if no container, because we want to handle Enter in textarea
+      const suggestions = suggestionsContainer ? Array.from(suggestionsContainer.querySelectorAll('.suggestion-item')) as HTMLElement[] : [];
+      
       if (suggestions.length > 0) {
         if (e.key === 'Tab' || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
           e.preventDefault();
@@ -269,10 +309,18 @@
           if (this.autocompleteIndex !== -1) {
             e.preventDefault();
             this.applySuggestion(input, suggestions[this.autocompleteIndex]);
-            this.clearAutocomplete(suggestionsContainer);
+            if (suggestionsContainer) this.clearAutocomplete(suggestionsContainer);
             return;
           }
         }
+      }
+
+      // Special handling for Enter in the tag editor textarea
+      if (e.key === 'Enter' && input.tagName === 'TEXTAREA' && input.name === 'tags') {
+        e.preventDefault();
+        const form = input.closest('form');
+        if (form) form.submit();
+        return;
       }
 
       // Reset index on other keys (except navigation keys handled above)
@@ -345,9 +393,6 @@
       // Move cursor to end of inserted tag
       const newPos = start + value.length + 1;
       input.setSelectionRange(newPos, newPos);
-      
-      // Trigger HTMX changed event if needed, but usually not necessary since we just updated the value
-      // and the user might continue typing.
     }
 
     private clearAutocomplete(container: Element) {

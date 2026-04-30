@@ -269,9 +269,31 @@ export class PostModel {
     `).all(limit, offset) as Post[];
   }
 /**
- * Retrieves a single post by its ID.
+ * Calculates the most frequent tags for posts matching a SearchQuery.
  */
-static getById(id: number): Post | undefined {
+static getRelatedTags(query: SearchQuery, limit: number = 25): (Tag & { count: number })[] {
+  const { conditions, params } = this.buildConditions(query);
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  // We use a subquery to find matching post IDs first for performance
+  const sql = `
+    SELECT t.*, COUNT(*) as count
+    FROM tags t
+    JOIN post_tags pt ON t.id = pt.tag_id
+    WHERE pt.post_id IN (
+      SELECT id FROM posts ${whereClause}
+    )
+    GROUP BY t.id
+    ORDER BY count DESC, t.name ASC
+    LIMIT ?
+  `;
+
+  return db.query(sql).all(...params, limit) as (Tag & { count: number })[];
+}
+
+/**
+ * Retrieves a single post by its ID.
+ */static getById(id: number): Post | undefined {
   return db.query("SELECT * FROM posts WHERE id = ?").get(id) as Post | undefined;
 }
 

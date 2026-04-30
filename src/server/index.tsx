@@ -97,19 +97,25 @@ app.use('/public/*', serveStatic({ root: './' }));
 app.get('/data/*', async (c) => {
     // Manually reconstruct the relative path from the URL
     const url = new URL(c.req.url);
-    const pathPart = url.pathname.replace(/^\/data\//, '');
-    const fullPath = join(PATHS.DATA, pathPart);
+    const pathPart = decodeURIComponent(url.pathname.replace(/^\/data\//, ''));
     
-    const file = Bun.file(fullPath);
+    // Security: Prevent path traversal
+    const safePath = join(PATHS.DATA, pathPart);
+    if (!safePath.startsWith(PATHS.DATA)) {
+        logger.warn("SECURITY", `Blocked path traversal attempt: ${safePath}`);
+        return c.text('Forbidden', 403);
+    }
+    
+    const file = Bun.file(safePath);
     const exists = await file.exists();
 
     // Log the attempt for debugging
     if (!exists) {
-        logger.warn("MEDIA", `404 -> ${fullPath}`);
+        logger.warn("MEDIA", `404 -> ${safePath}`);
         return c.text('Not Found', 404);
     }
 
-    logger.debug("MEDIA", `SERVE -> ${fullPath}`);
+    logger.debug("MEDIA", `SERVE -> ${safePath}`);
 
     c.header('Cache-Control', 'public, max-age=31536000, immutable');
     return c.body(file as any);
@@ -196,6 +202,7 @@ app.get(
 
         const posts = PostModel.search(query, limit, offset);
         const totalCount = PostModel.count(query);
+        const relatedTags = PostModel.getRelatedTags(query);
 
         // Robust pagination state
         let hasPrev = false;
@@ -210,6 +217,7 @@ app.get(
         return c.render(
             <Home 
                 posts={posts} 
+                tags={relatedTags}
                 searchQuery={tagsParam} 
                 currentPage={pageStr} 
                 totalCount={totalCount} 

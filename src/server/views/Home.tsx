@@ -4,6 +4,7 @@ import { PostThumbnail } from '../components/PostThumbnail';
 
 interface HomeProps {
   posts: Post[];
+  tags: (Tag & { count: number })[];
   searchQuery?: string;
   currentPage?: string;
   totalCount: number;
@@ -18,6 +19,7 @@ interface HomeProps {
  */
 export const Home: FC<HomeProps> = ({ 
   posts, 
+  tags,
   searchQuery, 
   currentPage = "1", 
   totalCount, 
@@ -79,7 +81,17 @@ export const Home: FC<HomeProps> = ({
         <section id="tag-box" class="sidebar-box">
           <h2>Tags</h2>
           <ul class="tag-list">
-            <li class="italic text-slate-500">Search for tags to see them here.</li>
+            {tags.length > 0 ? (
+              tags.map(tag => (
+                <li key={tag.id} class={`tag-type-${tag.namespace}`}>
+                  <a href={`/?tags=${tag.name}`}>?</a>{' '}
+                  <a href={`/?tags=${tag.name}`} class="tag-name">{tag.name.replace(/_/g, ' ')}</a>{' '}
+                  <span class="post-count">{tag.count}</span>
+                </li>
+              ))
+            ) : (
+              <li class="italic text-slate-500">No tags found.</li>
+            )}
           </ul>
         </section>
       </aside>
