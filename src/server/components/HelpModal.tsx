@@ -6,7 +6,7 @@ import type { FC } from 'hono/jsx';
  */
 export const HelpModal: FC = () => {
   return (
-    <div id="help-modal" style="display: none;">
+    <div id="help-modal" style="display: none;" data-hx-history="false">
       <div class="help-modal-content">
         <header>
           <h2>Keyboard Shortcuts</h2>

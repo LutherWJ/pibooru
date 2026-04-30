@@ -67,7 +67,6 @@ export const Home: FC<HomeProps> = ({
               placeholder="Tags"
               value={searchQuery || ""}
               id="tags"
-              autofocus={!hasPrev && currentPage === "1" ? true : undefined}
               autocomplete="off"
               hx-get="/partials/tags/suggestions"
               hx-trigger="keyup changed delay:100ms"

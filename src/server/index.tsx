@@ -325,7 +325,12 @@ app.post(
         const { id } = c.req.valid("param");
         const { tags } = c.req.valid("form");
         PostModel.updateTags(id, tags);
-        return c.redirect(`/post/${id}`);
+        
+        const url = `/post/${id}`;
+        if (c.req.header('hx-request')) {
+            c.header('HX-Replace-Url', url);
+        }
+        return c.redirect(url);
     }
 );
 

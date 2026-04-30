@@ -18,6 +18,12 @@
       // Use delegation for all events to be HTMX-friendly
       document.addEventListener('keydown', (e) => this.handleKeyDown(e));
       document.addEventListener('click', (e) => {
+        // Prevent intercepting clicks in non-boosted forms (like Login)
+        const target = e.target as HTMLElement;
+        if (target.closest('form:not([hx-boost="true"]), [hx-boost="false"]')) {
+          return;
+        }
+
         this.handleMouseClick(e);
         this.handleToggleVisibility(e);
         this.handleModalClick(e);
@@ -38,7 +44,11 @@
       });
 
       // Critical for Back button / History restoration
-      document.addEventListener('htmx:beforeHistorySave', () => this.cleanupMedia());
+      document.addEventListener('htmx:beforeHistorySave', () => {
+        this.cleanupMedia();
+        // Force hide help modal before saving history to avoid ghosting
+        this.hideHelp();
+      });
       document.addEventListener('htmx:historyRestore', () => {
         this.cleanupMedia();
         // Delay slightly to allow the DOM to settle
@@ -82,7 +92,8 @@
     private toggleHelp() {
       const modal = document.getElementById('help-modal');
       if (modal) {
-        modal.style.display = modal.style.display === 'none' ? 'flex' : 'none';
+        const isHidden = modal.style.display === 'none' || window.getComputedStyle(modal).display === 'none';
+        modal.style.display = isHidden ? 'flex' : 'none';
       }
     }
 
@@ -95,7 +106,6 @@
       let toggleTrigger: HTMLElement | null = null;
       
       if (e) {
-        e.preventDefault();
         const target = e.target as HTMLElement;
         toggleTrigger = target.closest('[data-toggle-visibility]') as HTMLElement;
       } else if (triggerSelector) {
@@ -103,6 +113,7 @@
       }
       
       if (toggleTrigger) {
+        if (e) e.preventDefault();
         const selector = toggleTrigger.getAttribute('data-toggle-visibility');
         if (selector) {
           const targetEl = document.querySelector(selector) as HTMLElement;
@@ -171,12 +182,21 @@
     private handleKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement;
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      const isExplicitlyUnboosted = !!target.closest('[hx-boost="false"]');
       const key = e.key.toLowerCase();
+
+      // If we are in an explicitly un-boosted area (like Login), completely ignore all hotkeys
+      if (isExplicitlyUnboosted) {
+        return;
+      }
 
       // Escape key hierarchy
       if (key === 'escape') {
+        const modal = document.getElementById('help-modal');
+        const modalIsVisible = modal && (modal.style.display === 'flex' || window.getComputedStyle(modal).display === 'flex');
+        
         // 1. Help Modal
-        if (document.getElementById('help-modal')?.style.display === 'flex') {
+        if (modalIsVisible) {
           this.hideHelp();
           e.preventDefault();
           return;
@@ -192,7 +212,8 @@
 
         // 3. Close Tag Editor
         const editForm = document.getElementById('edit-tags-form');
-        if (editForm && editForm.style.display !== 'none') {
+        const editFormIsVisible = editForm && (editForm.style.display !== 'none' && window.getComputedStyle(editForm).display !== 'none');
+        if (editFormIsVisible) {
           this.handleToggleVisibility(null, '#edit-tags-link');
           e.preventDefault();
           return;
@@ -201,7 +222,7 @@
         // 4. Blur Input
         if (isInput) {
           target.blur();
-          e.preventDefault();
+          this.syncFocus();
           return;
         }
 
@@ -225,22 +246,25 @@
       switch (key) {
         // Navigation
         case 'h': case 'arrowleft': case 'a':
-          this.moveFocus(-1);
+          if (!isInput) this.moveFocus(-1);
           break;
         case 'l': case 'arrowright': case 'd':
-          this.moveFocus(1);
+          if (!isInput) this.moveFocus(1);
           break;
         case 'k': case 'arrowup': case 'w':
-          this.moveFocusVertical(-1);
+          if (!isInput) this.moveFocusVertical(-1);
           break;
         case 'j': case 'arrowdown': case 's':
-          this.moveFocusVertical(1);
+          if (!isInput) this.moveFocusVertical(1);
           break;
 
         // Selection
         case ' ':
         case 'enter':
-          this.triggerActive();
+          // Don't trigger active thumbnail if we are inside a form/input
+          if (!isInput) {
+            this.triggerActive();
+          }
           break;
 
         // Shortcuts
@@ -315,11 +339,19 @@
         }
       }
 
-      // Special handling for Enter in the tag editor textarea
-      if (e.key === 'Enter' && input.tagName === 'TEXTAREA' && input.name === 'tags') {
+      // Special handling for Enter in primary tag inputs (search box or edit textarea)
+      if (e.key === 'Enter' && (input.id === 'tags' || (input.tagName === 'TEXTAREA' && input.name === 'tags'))) {
         e.preventDefault();
         const form = input.closest('form');
-        if (form) form.submit();
+        if (form) {
+          // Trigger the submit button if it exists to ensure HTMX/boost works
+          const submitBtn = form.querySelector('button[type="submit"]') as HTMLElement;
+          if (submitBtn) {
+            submitBtn.click();
+          } else {
+            form.submit();
+          }
+        }
         return;
       }
 
