@@ -13,12 +13,13 @@ import { deleteCookie, setSignedCookie } from "hono/cookie";
 import { authMiddleware } from "./middleware/auth";
 import { UserModel } from "./models/User";
 import { Login } from "./views/Login";
-import { User } from "./db/schema";
+import type { User } from "./db/schema";
 
 import { renderer } from "./middleware/renderer";
 import { Home } from "./views/Home";
 import { PostDetail } from "./views/PostDetail";
 import { Tags } from "./views/Tags";
+import { TagDetail } from "./views/TagDetail";
 import uploadApp from "./routes/upload";
 import { PostModel } from "./models/Post";
 import { TagModel } from "./models/Tag";
@@ -93,15 +94,31 @@ app.use(
 // Static files (Code/CSS/JS)
 app.use('/public/*', serveStatic({ root: './' }));
 
+// Global Rate Limiter
+const limiter = rateLimiter({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: 10000, // Limit each IP to 10000 requests per `window`
+    standardHeaders: "draft-6", // Set `RateLimit-*` headers
+    keyGenerator: (c) => c.req.header("x-forwarded-for") || "anonymous", // Simple IP tracking
+});
+app.use("*", limiter);
+
+// CSRF Protection
+app.use('*', csrf());
+
+app.use('*', renderer);
+
+app.use('*', authMiddleware);
+
 // Custom robust media server for external DATA_DIR
 app.get('/data/*', async (c) => {
     // Manually reconstruct the relative path from the URL
     const url = new URL(c.req.url);
     const pathPart = decodeURIComponent(url.pathname.replace(/^\/data\//, ''));
     
-    // Security: Prevent path traversal
+    // Security: Prevent path traversal using a strict prefix check
     const safePath = join(PATHS.DATA, pathPart);
-    if (!safePath.startsWith(PATHS.DATA)) {
+    if (!safePath.startsWith(PATHS.DATA + "/")) {
         logger.warn("SECURITY", `Blocked path traversal attempt: ${safePath}`);
         return c.text('Forbidden', 403);
     }
@@ -120,27 +137,6 @@ app.get('/data/*', async (c) => {
     c.header('Cache-Control', 'public, max-age=31536000, immutable');
     return c.body(file as any);
 });
-
-// CSRF Protection with bypass for the bulk uploader
-app.use('*', (c, next) => {
-    if (c.req.header('X-MyBooru-Uploader') === 'true') {
-        return next();
-    }
-    return csrf()(c, next);
-});
-
-// Global Rate Limiter
-const limiter = rateLimiter({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    limit: 10000, // Limit each IP to 1000 requests per `window`
-    standardHeaders: "draft-6", // Set `RateLimit-*` headers
-    keyGenerator: (c) => c.req.header("x-forwarded-for") || "anonymous", // Simple IP tracking
-});
-app.use("*", limiter);
-
-app.use('*', renderer);
-
-app.use('*', authMiddleware);
 
 // Authentication Routes
 app.get("/login", (c) => c.render(<Login />, { title: "Login" }));
@@ -346,6 +342,118 @@ app.delete(
             return c.text('Deleted');
         }
         return c.redirect("/");
+    }
+);
+
+app.get(
+    "/tag/:name",
+    zValidator("param", z.object({ name: z.string() })),
+    (c) => {
+        const { name } = c.req.valid("param");
+        const tag = TagModel.getByName(name);
+        if (!tag) return c.notFound();
+
+        const aliases = TagModel.getAliases(tag.id);
+        const implications = TagModel.getImplications(tag.id);
+        const posts = PostModel.search({ tags: [{ name: tag.name, namespace: tag.namespace, negated: false }] }, 20);
+
+        return c.render(
+            <TagDetail 
+                tag={tag} 
+                aliases={aliases} 
+                implications={implications} 
+                posts={posts} 
+            />,
+            { title: `Tag: ${tag.name}` }
+        );
+    }
+);
+
+// --- Tag API Endpoints ---
+
+app.post(
+    "/api/tags/:name/alias",
+    zValidator("param", z.object({ name: z.string() })),
+    zValidator("form", z.object({ alias: z.string() })),
+    async (c) => {
+        const { name } = c.req.valid("param");
+        const { alias } = c.req.valid("form");
+        const tag = TagModel.getByName(name);
+        if (!tag) return c.notFound();
+
+        TagModel.addAlias(tag.id, alias);
+        
+        return c.html(
+            <li style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+              <span>{alias}</span>
+              <button 
+                hx-delete={`/api/tags/${tag.name}/alias/${alias}`}
+                hx-target="closest li"
+                hx-swap="outerHTML"
+                style="background: #ef4444; color: white; border: none; padding: 2px 5px; cursor: pointer; font-size: 10px;"
+              >
+                Delete
+              </button>
+            </li>
+        );
+    }
+);
+
+app.delete(
+    "/api/tags/:name/alias/:alias_name",
+    zValidator("param", z.object({ name: z.string(), alias_name: z.string() })),
+    async (c) => {
+        const { alias_name } = c.req.valid("param");
+        TagModel.removeAlias(alias_name);
+        return c.body(null, 204);
+    }
+);
+
+app.post(
+    "/api/tags/:name/implication",
+    zValidator("param", z.object({ name: z.string() })),
+    zValidator("form", z.object({ target_tag: z.string() })),
+    async (c) => {
+        const { name } = c.req.valid("param");
+        const { target_tag: targetTagName } = c.req.valid("form");
+        
+        const sourceTag = TagModel.getByName(name);
+        if (!sourceTag) return c.notFound();
+
+        const { name: targetName, namespace: targetNamespace } = TagModel.parseRaw(targetTagName);
+        const targetTagId = TagModel.getOrCreate(targetName, targetNamespace);
+        const targetTag = TagModel.getById(targetTagId);
+
+        if (!targetTag) return c.notFound();
+
+        TagModel.addImplication(sourceTag.id, targetTag.id);
+
+        return c.html(
+            <li style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+              <a href={`/tag/${targetTag.name}`} class={`tag-type-${targetTag.namespace}`}>{targetTag.name}</a>
+              <button 
+                hx-delete={`/api/tags/${sourceTag.name}/implication/${targetTag.id}`}
+                hx-target="closest li"
+                hx-swap="outerHTML"
+                style="background: #ef4444; color: white; border: none; padding: 2px 5px; cursor: pointer; font-size: 10px;"
+              >
+                Delete
+              </button>
+            </li>
+        );
+    }
+);
+
+app.delete(
+    "/api/tags/:name/implication/:target_id",
+    zValidator("param", z.object({ name: z.string(), target_id: z.string().transform(v => parseInt(v, 10)) })),
+    async (c) => {
+        const { name, target_id } = c.req.valid("param");
+        const sourceTag = TagModel.getByName(name);
+        if (!sourceTag) return c.notFound();
+
+        TagModel.removeImplication(sourceTag.id, target_id);
+        return c.body(null, 204);
     }
 );
 

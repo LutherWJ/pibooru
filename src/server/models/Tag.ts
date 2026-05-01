@@ -104,12 +104,12 @@ export class TagModel {
         'copy': 'copyright',
       };
       
-      let namespaceToUse = possibleNamespace;
-      if (aliases[possibleNamespace]) {
+      let namespaceToUse = possibleNamespace || "";
+      if (possibleNamespace && aliases[possibleNamespace]) {
         namespaceToUse = aliases[possibleNamespace];
       }
 
-      if (validNamespaces.includes(namespaceToUse)) {
+      if (namespaceToUse && validNamespaces.includes(namespaceToUse)) {
         namespace = namespaceToUse;
         name = parts.slice(1).join(":");
       }
@@ -157,5 +157,112 @@ export class TagModel {
         LIMIT ?
       `).all(`${nameQuery}%`, limit) as Tag[];
     }
+  }
+
+  /**
+   * Gets a tag by name and namespace.
+   */
+  static getByName(name: string, namespace: string = "general"): Tag | null {
+    return db.query("SELECT * FROM tags WHERE name = ? AND namespace = ?").get(name, namespace) as Tag | null;
+  }
+
+  /**
+   * Gets a tag by ID.
+   */
+  static getById(id: number): Tag | null {
+    return db.query("SELECT * FROM tags WHERE id = ?").get(id) as Tag | null;
+  }
+
+  // --- Alias Management ---
+
+  /**
+   * Resolves an alias to its target tag.
+   */
+  static resolveAlias(aliasName: string): Tag | null {
+    return db.query(`
+      SELECT t.* FROM tags t
+      JOIN tag_aliases ta ON t.id = ta.target_tag_id
+      WHERE ta.alias_name = ?
+    `).get(aliasName.toLowerCase()) as Tag | null;
+  }
+
+  /**
+   * Adds an alias for a tag.
+   */
+  static addAlias(targetTagId: number, aliasName: string): void {
+    db.prepare(`
+      INSERT OR REPLACE INTO tag_aliases (alias_name, target_tag_id)
+      VALUES (?, ?)
+    `).run(aliasName.toLowerCase(), targetTagId);
+  }
+
+  /**
+   * Removes an alias.
+   */
+  static removeAlias(aliasName: string): void {
+    db.prepare("DELETE FROM tag_aliases WHERE alias_name = ?").run(aliasName.toLowerCase());
+  }
+
+  /**
+   * Gets all aliases for a tag.
+   */
+  static getAliases(tagId: number): string[] {
+    const result = db.query("SELECT alias_name FROM tag_aliases WHERE target_tag_id = ?").all(tagId) as { alias_name: string }[];
+    return result.map(r => r.alias_name);
+  }
+
+  // --- Implication Management ---
+
+  /**
+   * Adds an implication: if a post has sourceTagId, it should also have targetTagId.
+   */
+  static addImplication(sourceTagId: number, targetTagId: number): void {
+    if (sourceTagId === targetTagId) return;
+    db.prepare(`
+      INSERT OR IGNORE INTO tag_implications (source_tag_id, target_tag_id)
+      VALUES (?, ?)
+    `).run(sourceTagId, targetTagId);
+  }
+
+  /**
+   * Removes an implication.
+   */
+  static removeImplication(sourceTagId: number, targetTagId: number): void {
+    db.prepare("DELETE FROM tag_implications WHERE source_tag_id = ? AND target_tag_id = ?").run(sourceTagId, targetTagId);
+  }
+
+  /**
+   * Gets tags implied by the given tag.
+   */
+  static getImplications(tagId: number): Tag[] {
+    return db.query(`
+      SELECT t.* FROM tags t
+      JOIN tag_implications ti ON t.id = ti.target_tag_id
+      WHERE ti.source_tag_id = ?
+    `).all(tagId) as Tag[];
+  }
+
+  /**
+   * Recursively finds all tags implied by a set of tag IDs.
+   */
+  static getAllImpliedTagIds(tagIds: number[]): number[] {
+    const allIds = new Set<number>(tagIds);
+    let currentIds = [...tagIds];
+
+    while (currentIds.length > 0) {
+      const nextIds: number[] = [];
+      for (const id of currentIds) {
+        const implied = db.query("SELECT target_tag_id FROM tag_implications WHERE source_tag_id = ?").all(id) as { target_tag_id: number }[];
+        for (const row of implied) {
+          if (!allIds.has(row.target_tag_id)) {
+            allIds.add(row.target_tag_id);
+            nextIds.push(row.target_tag_id);
+          }
+        }
+      }
+      currentIds = nextIds;
+    }
+
+    return Array.from(allIds);
   }
 }

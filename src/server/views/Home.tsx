@@ -1,5 +1,5 @@
 import type { FC } from 'hono/jsx';
-import type { Post } from '../db/schema';
+import type { Post, Tag } from '../db/schema';
 import { PostThumbnail } from '../components/PostThumbnail';
 
 interface HomeProps {

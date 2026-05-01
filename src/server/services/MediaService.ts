@@ -140,24 +140,61 @@ export class MediaService {
   }
 
   /**
+   * Copies a file while stripping all metadata.
+   */
+  static async stripMetadata(inputPath: string, outputPath: string): Promise<void> {
+    await mkdir(dirname(outputPath), { recursive: true });
+
+    const args = [
+      CONFIG.FFMPEG_PATH,
+      "-y",
+      "-i", inputPath,
+      "-map_metadata", "-1",
+      "-c", "copy",
+      outputPath
+    ];
+
+    const proc = Bun.spawn(args, { stderr: "pipe" });
+    const exitCode = await proc.exited;
+
+    if (exitCode !== 0) {
+      const errorText = await new Response(proc.stderr).text();
+      // If "-c copy" fails (e.g. for some unusual formats), we might want a fallback, 
+      // but for now, we'll treat it as a failure for security/privacy consistency.
+      logger.error("MEDIA", `FFmpeg metadata stripping failed (code ${exitCode})`, {
+        command: args.join(" "),
+        stderr: errorText,
+        input: inputPath,
+        output: outputPath
+      });
+      throw new Error(`FFmpeg metadata stripping failed: ${errorText}`);
+    }
+  }
+
+  /**
    * Full pipeline for a new file.
    */
   static async processUpload(tempPath: string, hash: string, originalExt: string) {
     const originalPath = this.getShardedPath("original", hash, originalExt);
     const thumbPath = this.getShardedPath("thumbs", hash, ".webp");
 
+    // 1. Get metadata and validate early (prevents moving non-media files)
+    const metadata = await this.probe(tempPath);
+    
+    // Simple validation: Ensure it's something ffprobe recognizes as a valid format
+    if (metadata.mimeType === "unknown" || (!metadata.width && !metadata.duration)) {
+        throw new Error("Invalid or unsupported media file");
+    }
+
     // Ensure directories exist
     await mkdir(dirname(originalPath), { recursive: true });
     await mkdir(dirname(thumbPath), { recursive: true });
 
-    // Move to original storage
-    await Bun.write(originalPath, Bun.file(tempPath));
+    // 2. Move to original storage while stripping metadata
+    await this.stripMetadata(tempPath, originalPath);
     
-    // Generate thumbnail
+    // 3. Generate thumbnail from the stripped original
     await this.generateThumbnail(originalPath, thumbPath);
-
-    // Get metadata
-    const metadata = await this.probe(originalPath);
 
     return {
       originalPath,

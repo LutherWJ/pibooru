@@ -1,4 +1,4 @@
-import { FC } from "hono/jsx";
+import type { FC } from "hono/jsx";
 
 interface LoginProps {
   error?: string;
@@ -13,7 +13,7 @@ export const Login: FC<LoginProps> = ({ error, success }) => {
       {error && <div style="color: #ff6b6b; background: #2d1a1a; padding: 0.5rem; margin-bottom: 1rem; border-radius: 4px; font-size: 0.9rem;">{error}</div>}
       {success && <div style="color: #6bff6b; background: #1a2d1a; padding: 0.5rem; margin-bottom: 1rem; border-radius: 4px; font-size: 0.9rem;">{success}</div>}
 
-      <form action="/login" method="POST" hx-boost="false" style="display: flex; flex-direction: column; gap: 1rem;">
+      <form action="/login" method="post" hx-boost="false" style="display: flex; flex-direction: column; gap: 1rem;">
         <div class="form-group">
           <label for="username" style="display: block; margin-bottom: 0.25rem;">Username</label>
           <input 

@@ -35,14 +35,14 @@ export class SearchParser {
     for (const token of tokens) {
       if (token.includes(":")) {
         const parts = token.split(":");
-        const key = parts[0].toLowerCase();
+        const key = parts[0]?.toLowerCase() || "";
         const value = parts.slice(1).join(":");
 
         switch (key) {
           case "rating":
           case "r": {
             const r = value.toLowerCase()[0];
-            if (["s", "q", "e"].includes(r)) {
+            if (r && ["s", "q", "e"].includes(r)) {
               query.rating = r as PostRating;
             }
             break;
@@ -100,12 +100,12 @@ export class SearchParser {
                 'copy': 'copyright',
               };
               
-              let namespaceToUse = possibleNamespace;
-              if (aliases[possibleNamespace]) {
+              let namespaceToUse = possibleNamespace || "";
+              if (possibleNamespace && aliases[possibleNamespace]) {
                 namespaceToUse = aliases[possibleNamespace];
               }
 
-              if (validNamespaces.includes(namespaceToUse)) {
+              if (namespaceToUse && validNamespaces.includes(namespaceToUse)) {
                 namespace = namespaceToUse;
                 name = parts.slice(1).join(":");
               }

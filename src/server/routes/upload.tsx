@@ -63,6 +63,11 @@ uploadApp.post(
             const hash = hasher.digest("hex");
             tempPath = join(tempDir, `${hash}${extension}`);
 
+            // Pre-calculate sharded paths for rollback reliability
+            const originalPath = MediaService.getShardedPath("original", hash, extension);
+            const thumbPath = MediaService.getShardedPath("thumbs", hash, ".webp");
+            shardedPaths = { original: originalPath, thumb: thumbPath };
+
             // Check if already exists in DB
             const existing = PostModel.getByHash(hash);
             if (existing) {
@@ -79,12 +84,8 @@ uploadApp.post(
             await unlink(preHashTempPath);
             preHashTempPath = null;
 
-            // 3. Process with MediaService (Sharding + Thumbnailing)
+            // 3. Process with MediaService (Sharding + Thumbnailing + Metadata Stripping)
             const processed = await MediaService.processUpload(tempPath, hash, extension);
-            shardedPaths = {
-                original: processed.originalPath,
-                thumb: processed.thumbPath
-            };
 
             // 4. Save to database
             const postId = PostModel.create({

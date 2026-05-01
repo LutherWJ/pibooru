@@ -1,5 +1,5 @@
 import { db } from "../db";
-import type { Post, CreatePost } from "../db/schema";
+import type { Post, CreatePost, Tag } from "../db/schema";
 import { TagModel } from "./Tag";
 import type { SearchQuery } from "../util/SearchParser";
 import { unlink } from "node:fs/promises";
@@ -33,6 +33,17 @@ export class PostModel {
 
     for (const tag of query.tags) {
       const exists = tag.negated ? "NOT EXISTS" : "EXISTS";
+      
+      // Resolve alias if it exists
+      let tagName = tag.name;
+      let tagNamespace = tag.namespace;
+      
+      const aliasedTag = TagModel.resolveAlias(tag.name);
+      if (aliasedTag) {
+        tagName = aliasedTag.name;
+        tagNamespace = aliasedTag.namespace;
+      }
+
       conditions.push(`${exists} (
         SELECT 1 FROM post_tags pt 
         JOIN tags t ON pt.tag_id = t.id 
@@ -40,7 +51,7 @@ export class PostModel {
         AND t.name = ? 
         AND t.namespace = ?
       )`);
-      params.push(tag.name, tag.namespace);
+      params.push(tagName, tagNamespace);
     }
 
     return { conditions, params };
@@ -159,6 +170,34 @@ export class PostModel {
   }
 
   /**
+   * Resolves aliases and expands implications for a set of raw tags.
+   */
+  private static resolveAndExpandTags(rawTags: string): number[] {
+    const tagList = Array.from(new Set(rawTags.split(/\s+/).filter(t => t.length > 0)));
+    const tagIds = new Set<number>();
+
+    for (const tagRaw of tagList) {
+      const { name, namespace } = TagModel.parseRaw(tagRaw);
+      
+      // Resolve alias
+      let targetName = name;
+      let targetNamespace = namespace;
+      const aliasedTag = TagModel.resolveAlias(name);
+      if (aliasedTag) {
+        targetName = aliasedTag.name;
+        targetNamespace = aliasedTag.namespace;
+      }
+
+      const tagId = TagModel.getOrCreate(targetName, targetNamespace);
+      tagIds.add(tagId);
+    }
+
+    // Expand implications
+    const expandedIds = TagModel.getAllImpliedTagIds(Array.from(tagIds));
+    return expandedIds;
+  }
+
+  /**
    * Creates a new post and associates it with the provided tags.
    */
   static create(data: CreatePost, rawTags: string): number {
@@ -177,10 +216,8 @@ export class PostModel {
       const postId = result.lastInsertRowid as number;
 
       // Process Tags
-      const tagList = Array.from(new Set(rawTags.split(/\s+/).filter(t => t.length > 0)));
-      for (const tagRaw of tagList) {
-        const { name, namespace } = TagModel.parseRaw(tagRaw);
-        const tagId = TagModel.getOrCreate(name, namespace);
+      const expandedTagIds = this.resolveAndExpandTags(rawTags);
+      for (const tagId of expandedTagIds) {
         if (TagModel.linkToPost(postId, tagId)) {
           TagModel.incrementCount(tagId);
         }
@@ -196,24 +233,22 @@ export class PostModel {
   static updateTags(postId: number, rawTags: string): void {
     db.transaction(() => {
       const currentTags = this.getTags(postId);
-      const newTagNames = Array.from(new Set(rawTags.split(/\s+/).filter(t => t.length > 0)));
+      const expandedTagIds = this.resolveAndExpandTags(rawTags);
       
-      const currentTagMap = new Map(currentTags.map(t => [t.namespace + ":" + t.name, t]));
-      const newTagParsed = newTagNames.map(t => TagModel.parseRaw(t));
-      const newTagMap = new Map(newTagParsed.map(t => [t.namespace + ":" + t.name, t]));
+      const currentTagIds = new Set(currentTags.map(t => t.id));
+      const newTagIds = new Set(expandedTagIds);
 
       // Tags to remove
-      for (const [key, tag] of currentTagMap) {
-        if (!newTagMap.has(key)) {
-          db.prepare("DELETE FROM post_tags WHERE post_id = ? AND tag_id = ?").run(postId, tag.id);
-          TagModel.decrementCount(tag.id);
+      for (const tagId of currentTagIds) {
+        if (!newTagIds.has(tagId)) {
+          db.prepare("DELETE FROM post_tags WHERE post_id = ? AND tag_id = ?").run(postId, tagId);
+          TagModel.decrementCount(tagId);
         }
       }
 
       // Tags to add
-      for (const [key, tag] of newTagMap) {
-        if (!currentTagMap.has(key)) {
-          const tagId = TagModel.getOrCreate(tag.name, tag.namespace);
+      for (const tagId of newTagIds) {
+        if (!currentTagIds.has(tagId)) {
           if (TagModel.linkToPost(postId, tagId)) {
             TagModel.incrementCount(tagId);
           }

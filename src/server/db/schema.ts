@@ -66,6 +66,26 @@ export const PostTagSchema = z.object({
 
 export type PostTag = z.infer<typeof PostTagSchema>;
 
+// --- Tag Aliases ---
+
+export const TagAliasSchema = z.object({
+  id: z.number().int().positive(),
+  alias_name: z.string().min(1),
+  target_tag_id: z.number().int().positive(),
+});
+
+export type TagAlias = z.infer<typeof TagAliasSchema>;
+
+// --- Tag Implications ---
+
+export const TagImplicationSchema = z.object({
+  id: z.number().int().positive(),
+  source_tag_id: z.number().int().positive(),
+  target_tag_id: z.number().int().positive(),
+});
+
+export type TagImplication = z.infer<typeof TagImplicationSchema>;
+
 // --- Users (Future-proofing) ---
 
 export const UserSchema = z.object({

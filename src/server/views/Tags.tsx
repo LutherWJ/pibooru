@@ -61,7 +61,7 @@ export const Tags: FC<TagsProps> = ({ tags, query, page, totalCount, limit }) =>
             {tags.map((tag) => (
               <tr style="border-bottom: 1px solid #222;">
                 <td style="padding: 10px;">
-                  <a href={`/?tags=${encodeURIComponent(tag.namespace === 'general' ? tag.name : `${tag.namespace}:${tag.name}`)}`} class={`tag-type-${tag.namespace}`}>
+                  <a href={`/tag/${tag.name}`} class={`tag-type-${tag.namespace}`}>
                     {tag.name.replace(/_/g, ' ')}
                   </a>
                 </td>

@@ -88,4 +88,35 @@ describe("MediaService (FFmpeg)", () => {
     // Should contain /original/a1/b2/a1b2c3d4e5f6.jpg
     expect(path).toContain(join("original", "a1", "b2", "a1b2c3d4e5f6.jpg"));
   });
+
+  it("should strip metadata from a file", async () => {
+    const metaFile = join(TEST_DIR, "with_meta.mp4");
+    const strippedFile = join(TEST_DIR, "stripped.mp4");
+
+    // Create file with metadata (using video for better cross-platform metadata support in tests)
+    await Bun.spawn([
+      CONFIG.FFMPEG_PATH, "-y",
+      "-i", SAMPLE_VIDEO,
+      "-metadata", "title=TestTitle",
+      "-c", "copy",
+      metaFile
+    ]).exited;
+
+    // Verify metadata exists (ffprobe)
+    const probe1 = await Bun.spawn([
+      CONFIG.FFPROBE_PATH, "-v", "error", "-show_entries", "format_tags=title", "-of", "default=noprint_wrappers=1:nokey=1", metaFile
+    ]).stdout;
+    const title1 = (await new Response(probe1).text()).trim();
+    expect(title1).toBe("TestTitle");
+
+    // Strip metadata
+    await MediaService.stripMetadata(metaFile, strippedFile);
+
+    // Verify metadata is gone
+    const probe2 = await Bun.spawn([
+        CONFIG.FFPROBE_PATH, "-v", "error", "-show_entries", "format_tags=title", "-of", "default=noprint_wrappers=1:nokey=1", strippedFile
+    ]).stdout;
+    const title2 = (await new Response(probe2).text()).trim();
+    expect(title2).toBe("");
+  });
 });

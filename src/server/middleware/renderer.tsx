@@ -1,6 +1,12 @@
 import { jsxRenderer } from 'hono/jsx-renderer';
 import { HelpModal } from '../components/HelpModal';
 
+declare module 'hono' {
+  interface ContextRenderer {
+    (content: string | Promise<string>, props?: { title?: string }): Response | Promise<Response>
+  }
+}
+
 interface RendererProps {
   title?: string;
 }
