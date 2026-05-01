@@ -69,7 +69,7 @@ app.use('*', honoLogger());
 app.use(
     '*',
     bodyLimit({
-        maxSize: 1024 * 1024 * 1024, // 1GB
+        maxSize: 10 * 1024 * 1024 * 1024, // 1GB
         onError: (c) => {
             return c.text('File too large', 413);
         },
@@ -115,14 +115,14 @@ app.get('/data/*', async (c) => {
     // Manually reconstruct the relative path from the URL
     const url = new URL(c.req.url);
     const pathPart = decodeURIComponent(url.pathname.replace(/^\/data\//, ''));
-    
+
     // Security: Prevent path traversal using a strict prefix check
     const safePath = join(PATHS.DATA, pathPart);
     if (!safePath.startsWith(PATHS.DATA + "/")) {
         logger.warn("SECURITY", `Blocked path traversal attempt: ${safePath}`);
         return c.text('Forbidden', 403);
     }
-    
+
     const file = Bun.file(safePath);
     const exists = await file.exists();
 
@@ -149,7 +149,7 @@ app.post(
     async (c) => {
         const { username, password } = c.req.valid("form");
         const user = await UserModel.verifyPassword(username, password);
-        
+
         if (user) {
             await setSignedCookie(c, "session_id", user.id.toString(), CONFIG.COOKIE_SECRET, {
                 httpOnly: true,
@@ -159,7 +159,7 @@ app.post(
             });
             return c.redirect("/");
         }
-        
+
         return c.render(<Login error="Invalid username or password" />, { title: "Login" });
     }
 );
@@ -211,12 +211,12 @@ app.get(
         }
 
         return c.render(
-            <Home 
-                posts={posts} 
+            <Home
+                posts={posts}
                 tags={relatedTags}
-                searchQuery={tagsParam} 
-                currentPage={pageStr} 
-                totalCount={totalCount} 
+                searchQuery={tagsParam}
+                currentPage={pageStr}
+                totalCount={totalCount}
                 limit={limit}
                 hasPrev={hasPrev}
                 hasNext={hasNext}
@@ -278,12 +278,12 @@ app.get(
         const totalCount = TagModel.countTotal(q);
 
         return c.render(
-            <Tags 
-                tags={tags} 
-                query={q} 
-                page={page} 
-                totalCount={totalCount} 
-                limit={limit} 
+            <Tags
+                tags={tags}
+                query={q}
+                page={page}
+                totalCount={totalCount}
+                limit={limit}
             />,
             { title: "Tags" }
         );
@@ -321,7 +321,7 @@ app.post(
         const { id } = c.req.valid("param");
         const { tags } = c.req.valid("form");
         PostModel.updateTags(id, tags);
-        
+
         const url = `/post/${id}`;
         if (c.req.header('hx-request')) {
             c.header('HX-Replace-Url', url);
@@ -358,11 +358,11 @@ app.get(
         const posts = PostModel.search({ tags: [{ name: tag.name, namespace: tag.namespace, negated: false }] }, 20);
 
         return c.render(
-            <TagDetail 
-                tag={tag} 
-                aliases={aliases} 
-                implications={implications} 
-                posts={posts} 
+            <TagDetail
+                tag={tag}
+                aliases={aliases}
+                implications={implications}
+                posts={posts}
             />,
             { title: `Tag: ${tag.name}` }
         );
@@ -382,18 +382,18 @@ app.post(
         if (!tag) return c.notFound();
 
         TagModel.addAlias(tag.id, alias);
-        
+
         return c.html(
             <li style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-              <span>{alias}</span>
-              <button 
-                hx-delete={`/api/tags/${tag.name}/alias/${alias}`}
-                hx-target="closest li"
-                hx-swap="outerHTML"
-                style="background: #ef4444; color: white; border: none; padding: 2px 5px; cursor: pointer; font-size: 10px;"
-              >
-                Delete
-              </button>
+                <span>{alias}</span>
+                <button
+                    hx-delete={`/api/tags/${tag.name}/alias/${alias}`}
+                    hx-target="closest li"
+                    hx-swap="outerHTML"
+                    style="background: #ef4444; color: white; border: none; padding: 2px 5px; cursor: pointer; font-size: 10px;"
+                >
+                    Delete
+                </button>
             </li>
         );
     }
@@ -416,7 +416,7 @@ app.post(
     async (c) => {
         const { name } = c.req.valid("param");
         const { target_tag: targetTagName } = c.req.valid("form");
-        
+
         const sourceTag = TagModel.getByName(name);
         if (!sourceTag) return c.notFound();
 
@@ -430,15 +430,15 @@ app.post(
 
         return c.html(
             <li style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-              <a href={`/tag/${targetTag.name}`} class={`tag-type-${targetTag.namespace}`}>{targetTag.name}</a>
-              <button 
-                hx-delete={`/api/tags/${sourceTag.name}/implication/${targetTag.id}`}
-                hx-target="closest li"
-                hx-swap="outerHTML"
-                style="background: #ef4444; color: white; border: none; padding: 2px 5px; cursor: pointer; font-size: 10px;"
-              >
-                Delete
-              </button>
+                <a href={`/tag/${targetTag.name}`} class={`tag-type-${targetTag.namespace}`}>{targetTag.name}</a>
+                <button
+                    hx-delete={`/api/tags/${sourceTag.name}/implication/${targetTag.id}`}
+                    hx-target="closest li"
+                    hx-swap="outerHTML"
+                    style="background: #ef4444; color: white; border: none; padding: 2px 5px; cursor: pointer; font-size: 10px;"
+                >
+                    Delete
+                </button>
             </li>
         );
     }
