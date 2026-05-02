@@ -90,35 +90,35 @@ describe("PostModel Search", () => {
     const query = SearchParser.parse("cat dog");
     const results = PostModel.search(query);
     expect(results.length).toBe(1);
-    expect(results[0].hash).toBe("3".repeat(64));
+    expect(results[0]!.hash).toBe("3".repeat(64));
   });
 
   it("excludes posts with negated tags", () => {
     const query = SearchParser.parse("animal -dog");
     const results = PostModel.search(query);
     expect(results.length).toBe(1);
-    expect(results[0].hash).toBe("1".repeat(64));
+    expect(results[0]!.hash).toBe("1".repeat(64));
   });
 
   it("filters by rating", () => {
     const query = SearchParser.parse("rating:q");
     const results = PostModel.search(query);
     expect(results.length).toBe(1);
-    expect(results[0].hash).toBe("2".repeat(64));
+    expect(results[0]!.hash).toBe("2".repeat(64));
   });
 
   it("filters by namespaced tags", () => {
     const query = SearchParser.parse("artist:bob");
     const results = PostModel.search(query);
     expect(results.length).toBe(1);
-    expect(results[0].hash).toBe("2".repeat(64));
+    expect(results[0]!.hash).toBe("2".repeat(64));
   });
 
   it("filters by type:video", () => {
     const query = SearchParser.parse("type:video");
     const results = PostModel.search(query);
     expect(results.length).toBe(1);
-    expect(results[0].mime_type).toBe("video/mp4");
+    expect(results[0]!.mime_type).toBe("video/mp4");
   });
 
   it("filters by type:image", () => {
@@ -132,7 +132,7 @@ describe("PostModel Search", () => {
     const query = SearchParser.parse("animal artist:bob rating:q");
     const results = PostModel.search(query);
     expect(results.length).toBe(1);
-    expect(results[0].hash).toBe("2".repeat(64));
+    expect(results[0]!.hash).toBe("2".repeat(64));
   });
   
   it("returns nothing for non-existent tags", () => {

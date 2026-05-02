@@ -6,9 +6,15 @@
   "private": true,
   "scripts": {
       "start": "bun src/server/index.tsx",
-      "build": "bun build src/client/index.ts --outdir public/dist --minify"
+      "build": "bun build src/client/index.ts --outdir public/dist --minify",
+      "typecheck": "bun x tsc --noEmit",
+      "test": "DATA_DIR=./data-test bun test src/server",
+      "test:e2e": "playwright test",
+      "test:e2e:ui": "playwright test --ui",
+      "ci": "bun run typecheck && bun run build && bun run test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/bun": "latest"
   },
   "peerDependencies": {

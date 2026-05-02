@@ -37,7 +37,7 @@ describe("Tag Aliases and Implications", () => {
 
     const implications = TagModel.getImplications(dog.id);
     expect(implications.length).toBe(1);
-    expect(implications[0].name).toBe("mammal");
+    expect(implications[0]!.name).toBe("mammal");
 
     const allImplied = TagModel.getAllImpliedTagIds([dog.id]);
     expect(allImplied.length).toBe(3); // dog, mammal, animal
@@ -72,6 +72,6 @@ describe("Tag Aliases and Implications", () => {
     });
     
     expect(results.length).toBe(1);
-    expect(results[0].hash).toBe("a".repeat(64));
+    expect(results[0]!.hash).toBe("a".repeat(64));
   });
 });

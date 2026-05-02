@@ -330,9 +330,9 @@
             this.autocompleteIndex = 0;
           }
           
-          if (this.autocompleteIndex !== -1) {
+          if (this.autocompleteIndex !== -1 && suggestions[this.autocompleteIndex]) {
             e.preventDefault();
-            this.applySuggestion(input, suggestions[this.autocompleteIndex]);
+            this.applySuggestion(input, suggestions[this.autocompleteIndex] as HTMLElement);
             if (suggestionsContainer) this.clearAutocomplete(suggestionsContainer);
             return;
           }
@@ -449,11 +449,13 @@
       if (items.length < 2) return;
 
       // Calculate columns based on the vertical position of elements (handles flex-wrap)
+      if (!items[0]) return;
       const firstItemTop = items[0].getBoundingClientRect().top;
       let columns = items.length;
 
       for (let i = 1; i < items.length; i++) {
-        if (items[i].getBoundingClientRect().top > firstItemTop + 5) { // +5 for minor subpixel differences
+        const item = items[i];
+        if (item && item.getBoundingClientRect().top > firstItemTop + 5) { // +5 for minor subpixel differences
           columns = i;
           break;
         }

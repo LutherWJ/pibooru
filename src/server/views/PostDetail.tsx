@@ -85,7 +85,7 @@ export const PostDetail: FC<PostDetailProps> = ({ post, tags }) => {
 
         <section id="edit-tags-form" class="sidebar-box" style="display: none; position: relative;">
           <h2>Edit Tags</h2>
-          <form action={`/post/${post.id}/tags`} method="post">
+          <form action={`/post/${post.id}/tags`} method="post" hx-replace-url="true">
             <textarea 
               name="tags" 
               style="width: 100%; background: #000; color: #fff; border: 1px solid #333; height: 100px; font-size: 11px;"

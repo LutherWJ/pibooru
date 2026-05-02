@@ -20,14 +20,14 @@ describe("TagModel Search", () => {
     const results = TagModel.search("app");
     expect(results.length).toBe(2);
     // Should prioritize higher post count
-    expect(results[0].name).toBe("apply");
+    expect(results[0]!.name).toBe("apply");
   });
 
   it("finds tags by namespace and prefix", () => {
     const results = TagModel.search("artist:art");
     expect(results.length).toBe(1);
-    expect(results[0].name).toBe("artist_apple");
-    expect(results[0].namespace).toBe("artist");
+    expect(results[0]!.name).toBe("artist_apple");
+    expect(results[0]!.namespace).toBe("artist");
   });
 
   it("returns empty for no match", () => {

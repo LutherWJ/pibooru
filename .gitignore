@@ -39,3 +39,4 @@ db.sqlite
 
 
 data/
+playwright/.auth

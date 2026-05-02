@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install system dependencies (FFmpeg for Unit Tests)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg
+
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
+    - name: Install dependencies
+      run: bun install
+
+    - name: Run CI (Typecheck, Build, Unit Tests)
+      run: bun run ci
