@@ -1,6 +1,6 @@
 {
   "name": "mybooru",
-  "version": "0.5.22-beta",
+  "version": "0.5.23-beta",
   "module": "index.ts",
   "type": "module",
   "private": true,
