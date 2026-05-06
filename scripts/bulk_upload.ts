@@ -3,15 +3,14 @@ import { join, extname, resolve } from "node:path";
 import { stat } from "node:fs/promises";
 
 /**
- * MyBooru Bulk Upload Script - Debug Version
+ * MyBooru Bulk Upload Script - API Key Version
  */
 
 const args = Bun.argv.slice(2);
 const params = {
     dir: "",
     tags: "",
-    username: "",
-    password: "",
+    apiKey: "",
     url: "http://localhost:3000",
     concurrency: 5,
     rating: "s",
@@ -20,16 +19,15 @@ const params = {
 for (let i = 0; i < args.length; i++) {
     if (args[i] === "--dir") params.dir = args[++i];
     else if (args[i] === "--tags") params.tags = args[++i];
-    else if (args[i] === "--username") params.username = args[++i];
-    else if (args[i] === "--password") params.password = args[++i];
+    else if (args[i] === "--api-key") params.apiKey = args[++i];
     else if (args[i] === "--url") params.url = args[++i];
     else if (args[i] === "--concurrency") params.concurrency = parseInt(args[++i], 10);
     else if (args[i] === "--rating") params.rating = args[++i];
 }
 
-if (!params.dir || !params.username || !params.password) {
-    console.error("Missing required arguments: --dir, --username, --password");
-    console.log("Usage: bun bulk_upload.ts --dir <path> --tags <tags> --username <user> --password <pass> [--url <url>] [--concurrency <n>] [--rating <s|q|e>]");
+if (!params.dir || !params.apiKey) {
+    console.error("Missing required arguments: --dir, --api-key");
+    console.log("Usage: bun bulk_upload.ts --dir <path> --tags <tags> --api-key <key> [--url <url>] [--concurrency <n>] [--rating <s|q|e>]");
     process.exit(1);
 }
 
@@ -70,46 +68,9 @@ async function run() {
     }
     console.log(`Found ${filesToUpload.length} media files to upload.`);
 
-    // 2. Login
-    console.log(`Attempting login for user: ${params.username}...`);
-    const loginFormData = new FormData();
-    loginFormData.append("username", params.username);
-    loginFormData.append("password", params.password);
+    console.log("Starting uploads with API key...");
 
-    const loginRes = await fetch(`${baseUrl}/login`, {
-        method: "POST",
-        body: loginFormData,
-        redirect: "manual",
-        headers: {
-            "Origin": baseUrl,
-            "Referer": `${baseUrl}/login`,
-            "X-MyBooru-Uploader": "true",
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        }
-    });
-
-    if (loginRes.status >= 400) {
-        console.error(`Login failed with status ${loginRes.status}`);
-        const text = await loginRes.text();
-        console.error("Response:", text.substring(0, 500));
-        process.exit(1);
-    }
-
-    const setCookie = loginRes.headers.get("set-cookie");
-    if (!setCookie) {
-        console.error(`Login failed: No session cookie received (Status: ${loginRes.status})`);
-        process.exit(1);
-    }
-
-    const sessionIdMatch = setCookie.match(/session_id=([^;]+)/);
-    if (!sessionIdMatch) {
-        console.error("Login failed: session_id not found in cookie.");
-        process.exit(1);
-    }
-    const cookie = `session_id=${sessionIdMatch[1]}`;
-    console.log("Login successful. Starting uploads...");
-
-    // 3. Upload
+    // 2. Upload
     const results = { success: 0, failed: 0, skipped: 0 };
 
     const uploadFile = async (filePath: string) => {
@@ -125,12 +86,10 @@ async function run() {
                 method: "POST",
                 body: formData,
                 headers: {
-                    "Cookie": `session_id=${sessionIdMatch[1]}`,
-                    "Origin": baseUrl,
-                    "Referer": `${baseUrl}/upload`,
+                    "Authorization": `Bearer ${params.apiKey}`,
                     "X-MyBooru-Uploader": "true",
                     "Accept": "application/json",
-                    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    "User-Agent": "MyBooru-BulkUploader/1.0"
                 }
             });
 
@@ -145,6 +104,8 @@ async function run() {
                 }
             } else {
                 console.error(`[FAILED] ${fileName}: ${res.status}`);
+                const text = await res.text();
+                console.error("Response:", text.substring(0, 200));
                 results.failed++;
             }
         } catch (error) {

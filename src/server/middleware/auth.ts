@@ -24,6 +24,17 @@ const PUBLIC_PREFIXES = [
 export async function authMiddleware(c: Context, next: Next) {
   const path = c.req.path;
 
+  // Check for API Key in Authorization header
+  const authHeader = c.req.header("Authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const apiKey = authHeader.substring(7);
+    const user = UserModel.findByApiKey(apiKey);
+    if (user) {
+      c.set("user", user);
+      return await next();
+    }
+  }
+
   // Check if path is public
   if (PUBLIC_PATHS.includes(path) || PUBLIC_PREFIXES.some(prefix => path.startsWith(prefix))) {
     // Even on public paths, we try to get the user if a session exists

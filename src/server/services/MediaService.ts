@@ -33,12 +33,14 @@ export class MediaService {
     
     if (exitCode !== 0) {
       const errorText = await new Response(proc.stderr).text();
-      const msg = `ffprobe failed (code ${exitCode}): ${errorText}`;
-      logger.error("MEDIA", msg, {
+      const msg = `ffprobe failed (code ${exitCode})`;
+      logger.error({
+        domain: "MEDIA",
         command: args.join(" "),
-        file: filePath
-      });
-      throw new Error(msg);
+        file: filePath,
+        stderr: errorText
+      }, msg);
+      throw new Error(`${msg}: ${errorText}`);
     }
 
     try {
@@ -59,12 +61,14 @@ export class MediaService {
         mimeType
       };
     } catch (e) {
-      const msg = `Failed to parse ffprobe output: ${e instanceof Error ? e.message : String(e)}`;
-      logger.error("MEDIA", msg, {
+      const msg = "Failed to parse ffprobe output";
+      logger.error({
+        domain: "MEDIA",
         output: text,
-        file: filePath
-      });
-      throw new Error(msg);
+        file: filePath,
+        err: e
+      }, msg);
+      throw new Error(`${msg}: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
@@ -109,21 +113,26 @@ export class MediaService {
     const errorText = await new Response(proc.stderr).text();
 
     if (exitCode !== 0) {
-      logger.error("MEDIA", `FFmpeg thumbnail generation failed (code ${exitCode})`, {
+      logger.error({
+        domain: "MEDIA",
         command: args.join(" "),
         stderr: errorText,
         input: inputPath,
         output: outputPath
-      });
+      }, "FFmpeg thumbnail generation failed");
       throw new Error(`FFmpeg failed (code ${exitCode}): ${errorText}`);
     }
 
     // Paranoia check: Does it actually exist and have size?
     const result = Bun.file(outputPath);
     if (!(await result.exists()) || result.size === 0) {
-      const msg = `FFmpeg reported success but result is missing or 0 bytes. Stderr: ${errorText}`;
-      logger.error("MEDIA", msg, { command: args.join(" "), stderr: errorText });
-      throw new Error(msg);
+      logger.error({
+        domain: "MEDIA",
+        command: args.join(" "),
+        stderr: errorText,
+        outputPath
+      }, "FFmpeg reported success but result is missing or 0 bytes");
+      throw new Error(`FFmpeg reported success but result is missing or 0 bytes`);
     }
   }
 
@@ -161,12 +170,13 @@ export class MediaService {
       const errorText = await new Response(proc.stderr).text();
       // If "-c copy" fails (e.g. for some unusual formats), we might want a fallback, 
       // but for now, we'll treat it as a failure for security/privacy consistency.
-      logger.error("MEDIA", `FFmpeg metadata stripping failed (code ${exitCode})`, {
+      logger.error({
+        domain: "MEDIA",
         command: args.join(" "),
         stderr: errorText,
         input: inputPath,
         output: outputPath
-      });
+      }, "FFmpeg metadata stripping failed");
       throw new Error(`FFmpeg metadata stripping failed: ${errorText}`);
     }
   }

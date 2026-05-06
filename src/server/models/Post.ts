@@ -287,7 +287,7 @@ export class PostModel {
       await unlink(originalPath);
       await unlink(thumbPath);
     } catch (e) {
-      logger.error("DB", `Failed to delete files for post ${postId}`, { error: e });
+      logger.error({ domain: "DB", postId, err: e }, "Failed to delete files for post");
     }
   }
 

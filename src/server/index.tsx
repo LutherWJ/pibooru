@@ -20,6 +20,7 @@ import { Home } from "./views/Home";
 import { PostDetail } from "./views/PostDetail";
 import { Tags } from "./views/Tags";
 import { TagDetail } from "./views/TagDetail";
+import { Settings, ApiKeyFragment } from "./views/Settings";
 import uploadApp from "./routes/upload";
 import { PostModel } from "./models/Post";
 import { TagModel } from "./models/Tag";
@@ -31,18 +32,19 @@ import { zValidator } from "@hono/zod-validator";
 import { logger } from "./util/logger";
 
 // Initialize Database
-logger.info("SYSTEM", "Initializing PiBooru...");
+logger.info({ domain: "SYSTEM" }, "Initializing PiBooru...");
 await initDb();
 
 const app = new Hono<{ Variables: { user: User } }>();
 
 // Global Error Handler
 app.onError((err, c) => {
-    logger.error("SYSTEM", `Unhandled exception: ${err.message}`, {
+    logger.error({
+        domain: "SYSTEM",
         url: c.req.url,
         method: c.req.method,
-        error: err
-    });
+        err
+    }, `Unhandled exception: ${err.message}`);
     return c.text("Internal Server Error", 500);
 });
 
@@ -103,8 +105,22 @@ const limiter = rateLimiter({
 });
 app.use("*", limiter);
 
+// Strict Login Rate Limiter
+const loginLimiter = rateLimiter({
+    windowMs: 15 * 60 * 1000,
+    limit: 5,
+    message: "Too many login attempts, please try again later",
+    standardHeaders: "draft-6",
+    keyGenerator: (c) => c.req.header("x-forwarded-for") || "anonymous",
+});
+
 // CSRF Protection
-app.use('*', csrf());
+app.use('*', async (c, next) => {
+    if (c.req.header('Authorization')?.startsWith('Bearer ')) {
+        return await next();
+    }
+    return await csrf()(c, next);
+});
 
 app.use('*', renderer);
 
@@ -119,7 +135,7 @@ app.get('/data/*', async (c) => {
     // Security: Prevent path traversal using a strict prefix check
     const safePath = join(PATHS.DATA, pathPart);
     if (!safePath.startsWith(PATHS.DATA + "/")) {
-        logger.warn("SECURITY", `Blocked path traversal attempt: ${safePath}`);
+        logger.warn({ domain: "SECURITY", safePath }, "Blocked path traversal attempt");
         return c.text('Forbidden', 403);
     }
 
@@ -128,11 +144,11 @@ app.get('/data/*', async (c) => {
 
     // Log the attempt for debugging
     if (!exists) {
-        logger.warn("MEDIA", `404 -> ${safePath}`);
+        logger.warn({ domain: "MEDIA", safePath }, "404 -> Not Found");
         return c.text('Not Found', 404);
     }
 
-    logger.debug("MEDIA", `SERVE -> ${safePath}`);
+    logger.debug({ domain: "MEDIA", safePath }, "SERVE -> Serving file");
 
     c.header('Cache-Control', 'public, max-age=31536000, immutable');
     return c.body(file as any);
@@ -142,6 +158,7 @@ app.get('/data/*', async (c) => {
 app.get("/login", (c) => c.render(<Login />, { title: "Login" }));
 app.post(
     "/login",
+    loginLimiter,
     zValidator("form", z.object({
         username: z.string().min(1),
         password: z.string().min(1)
@@ -167,6 +184,17 @@ app.post(
 app.get("/logout", (c) => {
     deleteCookie(c, "session_id");
     return c.redirect("/login");
+});
+
+app.get("/settings", (c) => {
+    const user = c.var.user;
+    return c.render(<Settings user={user} apiKey={user.api_key || null} />, { title: "Settings" });
+});
+
+app.post("/settings/rotate-api-key", async (c) => {
+    const user = c.var.user;
+    const newKey = UserModel.generateApiKey(user.id);
+    return c.html(<ApiKeyFragment apiKey={newKey} />);
 });
 
 // Routes
@@ -459,7 +487,7 @@ app.delete(
 
 app.route("/upload", uploadApp);
 
-logger.info("SYSTEM", `PiBooru started on port ${CONFIG.PORT}`);
+logger.info({ domain: "SYSTEM", port: CONFIG.PORT }, "PiBooru started");
 
 export default {
     port: CONFIG.PORT,

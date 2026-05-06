@@ -18,12 +18,13 @@ function validateConfig() {
   const result = envSchema.safeParse(process.env);
 
   if (!result.success) {
-    logger.error("CONFIG", "Invalid environment configuration", {
+    logger.error({
+      domain: "CONFIG",
       issues: result.error.issues.map(issue => ({
         path: issue.path.join("."),
         message: issue.message
       }))
-    });
+    }, "Invalid environment configuration");
     process.exit(1);
   }
 
@@ -32,12 +33,12 @@ function validateConfig() {
   const ffprobePath = Bun.which(result.data.FFPROBE_PATH);
 
   if (!ffmpegPath) {
-    logger.error("CONFIG", `FFmpeg binary not found at path: ${result.data.FFMPEG_PATH}`);
+    logger.error({ domain: "CONFIG", path: result.data.FFMPEG_PATH }, "FFmpeg binary not found");
     process.exit(1);
   }
 
   if (!ffprobePath) {
-    logger.error("CONFIG", `FFprobe binary not found at path: ${result.data.FFPROBE_PATH}`);
+    logger.error({ domain: "CONFIG", path: result.data.FFPROBE_PATH }, "FFprobe binary not found");
     process.exit(1);
   }
 

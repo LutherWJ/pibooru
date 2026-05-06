@@ -103,11 +103,13 @@ uploadApp.post(
                 user_id: null,
             }, rawTags);
 
-            logger.info("UPLOAD", `Successfully processed upload: ${postId}`, {
+            logger.info({
+                domain: "UPLOAD",
+                postId,
                 hash,
                 extension,
                 size: file.size
-            });
+            }, "Successfully processed upload");
 
             if (c.req.header("accept")?.includes("application/json")) {
                 return c.json({ success: true, postId, redirectUrl: `/post/${postId}` });
@@ -115,12 +117,13 @@ uploadApp.post(
             return c.redirect(`/post/${postId}`);
 
         } catch (error) {
-            logger.error("UPLOAD", "Upload processing failed", {
+            logger.error({
+                domain: "UPLOAD",
                 fileName: file.name,
                 fileType: file.type,
                 fileSize: file.size,
-                error
-            });
+                err: error
+            }, "Upload processing failed");
             
             // ROLLBACK: Cleanup any files created during this failed attempt
             // IMPORTANT: Only delete if the hash doesn't already exist in the DB 

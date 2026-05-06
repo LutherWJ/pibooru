@@ -7,10 +7,10 @@ import { logger } from "../src/server/util/logger";
  * Maintenance script to retroactively apply tag implications to all posts.
  */
 async function main() {
-  logger.info("MAINTENANCE", "Starting retroactive tag implication application...");
+  logger.info({ domain: "MAINTENANCE" }, "Starting retroactive tag implication application");
 
   const posts = db.query("SELECT id FROM posts").all() as { id: number }[];
-  logger.info("MAINTENANCE", `Found ${posts.length} posts to process.`);
+  logger.info({ domain: "MAINTENANCE", count: posts.length }, "Found posts to process");
 
   let updatedCount = 0;
 
@@ -38,10 +38,10 @@ async function main() {
     }
   }
 
-  logger.info("MAINTENANCE", `Finished. Updated ${updatedCount} posts.`);
+  logger.info({ domain: "MAINTENANCE", updatedCount }, "Finished updating posts");
 }
 
 main().catch(e => {
-  logger.error("MAINTENANCE", "Failed to apply implications", { error: e });
+  logger.error({ domain: "MAINTENANCE", err: e }, "Failed to apply implications");
   process.exit(1);
 });

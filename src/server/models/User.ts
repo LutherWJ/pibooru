@@ -20,7 +20,7 @@ export class UserModel {
 
       return result.lastInsertRowid as number;
     } catch (e) {
-      logger.error("DB", "Failed to create user", { username, error: e });
+      logger.error({ domain: "DB", username, err: e }, "Failed to create user");
       return null;
     }
   }
@@ -37,6 +37,22 @@ export class UserModel {
    */
   static findById(id: number): User | undefined {
     return db.query("SELECT * FROM users WHERE id = ?").get(id) as User | undefined;
+  }
+
+  /**
+   * Generates a new API key for a user.
+   */
+  static generateApiKey(userId: number): string {
+    const apiKey = crypto.randomUUID().replace(/-/g, '');
+    db.prepare("UPDATE users SET api_key = ? WHERE id = ?").run(apiKey, userId);
+    return apiKey;
+  }
+
+  /**
+   * Finds a user by their API key.
+   */
+  static findByApiKey(apiKey: string): User | undefined {
+    return db.query("SELECT * FROM users WHERE api_key = ?").get(apiKey) as User | undefined;
   }
 
   /**

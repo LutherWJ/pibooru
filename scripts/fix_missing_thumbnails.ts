@@ -6,10 +6,10 @@ import { logger } from "../src/server/util/logger";
  * Maintenance script to find and regenerate missing thumbnails.
  */
 async function main() {
-  logger.info("MAINTENANCE", "Starting missing thumbnail regeneration...");
+  logger.info({ domain: "MAINTENANCE" }, "Starting missing thumbnail regeneration");
 
   const posts = db.query("SELECT * FROM posts").all() as any[];
-  logger.info("MAINTENANCE", `Found ${posts.length} posts to check.`);
+  logger.info({ domain: "MAINTENANCE", count: posts.length }, "Found posts to check");
 
   let fixedCount = 0;
   let errorCount = 0;
@@ -33,16 +33,16 @@ async function main() {
       try {
         const originalFile = Bun.file(originalPath);
         if (!(await originalFile.exists())) {
-          logger.error("MAINTENANCE", `Original file missing for post ${post.id}, cannot regenerate thumbnail.`, { path: originalPath });
+          logger.error({ domain: "MAINTENANCE", postId: post.id, path: originalPath }, "Original file missing, cannot regenerate thumbnail");
           errorCount++;
           continue;
         }
 
-        logger.info("MAINTENANCE", `Regenerating thumbnail for post ${post.id}...`);
+        logger.info({ domain: "MAINTENANCE", postId: post.id }, "Regenerating thumbnail");
         await MediaService.generateThumbnail(originalPath, thumbPath);
         fixedCount++;
       } catch (e) {
-        logger.error("MAINTENANCE", `Failed to regenerate thumbnail for post ${post.id}`, { error: e });
+        logger.error({ domain: "MAINTENANCE", postId: post.id, err: e }, "Failed to regenerate thumbnail");
         errorCount++;
       }
     } else {
@@ -50,15 +50,16 @@ async function main() {
     }
   }
 
-  logger.info("MAINTENANCE", "Thumbnail regeneration complete.", {
+  logger.info({
+    domain: "MAINTENANCE",
     total: posts.length,
     fixed: fixedCount,
     skipped: skippedCount,
     errors: errorCount
-  });
+  }, "Thumbnail regeneration complete");
 }
 
 main().catch(e => {
-  logger.error("MAINTENANCE", "Fatal error during thumbnail regeneration", { error: e });
+  logger.error({ domain: "MAINTENANCE", err: e }, "Fatal error during thumbnail regeneration");
   process.exit(1);
 });

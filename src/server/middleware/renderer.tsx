@@ -40,6 +40,7 @@ export const renderer = jsxRenderer(({ children, title }: RendererProps & { chil
                 <li class="user-info" style="margin-left: auto;">
                   <span>{c.var.user.username}</span>
                 </li>
+                <li><a href="/settings">Settings</a></li>
                 <li><a href="/logout" hx-boost="false">Logout</a></li>
               </>
             ) : (

@@ -5,7 +5,7 @@ import { PATHS } from "../../util/paths";
 import { logger } from "../../util/logger";
 
 export async function runMigrations(db: Database) {
-  logger.info("DB", "Checking for database migrations...");
+  logger.info({ domain: "DB" }, "Checking for database migrations...");
 
   // Disable foreign keys during migration to allow for table recreations
   const fkStatus = db.query("PRAGMA foreign_keys").get() as { foreign_keys: number };
@@ -31,7 +31,7 @@ export async function runMigrations(db: Database) {
 
     for (const file of migrationFiles) {
       if (!executedMigrations.has(file)) {
-        logger.info("DB", `Executing migration: ${file}`);
+        logger.info({ domain: "DB", migration: file }, "Executing migration");
         const sql = await readFile(join(PATHS.MIGRATIONS, file), "utf8");
         
         // Execute as a transaction
@@ -40,7 +40,7 @@ export async function runMigrations(db: Database) {
           db.run("INSERT INTO _migrations (name) VALUES (?)", [file]);
         })();
         
-        logger.info("DB", `Migration ${file} completed successfully.`);
+        logger.info({ domain: "DB", migration: file }, "Migration completed successfully");
       }
     }
   } finally {
@@ -50,5 +50,5 @@ export async function runMigrations(db: Database) {
     }
   }
 
-  logger.info("DB", "Database is up to date.");
+  logger.info({ domain: "DB" }, "Database is up to date.");
 }
