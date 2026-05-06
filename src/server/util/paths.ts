@@ -1,9 +1,12 @@
 import { join, isAbsolute, dirname } from "node:path";
 import { CONFIG } from "./config";
 
-// Resolve ROOT based on whether we are running as a compiled binary or source
-// If binary, use the directory containing the binary. If source, use import.meta.dir.
-const isBinary = !!process.env.BUN_BINARY_TARGET;
+// Resolve ROOT based on whether we are running as a compiled binary or source.
+// We check for '$bunfs' which Bun uses for its internal virtual filesystem.
+const isBinary = import.meta.url.includes('$bunfs');
+
+// If binary, ROOT is the directory containing the binary. 
+// If source, ROOT is 3 levels up from this file.
 const ROOT = isBinary 
   ? dirname(process.execPath)
   : join(import.meta.dir, "..", "..", "..");

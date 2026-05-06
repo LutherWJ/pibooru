@@ -31,6 +31,14 @@ import { zValidator } from "@hono/zod-validator";
 
 import { logger } from "./util/logger";
 
+// Log system paths for debugging
+logger.info({
+    domain: "SYSTEM",
+    root: PATHS.ROOT,
+    data: PATHS.DATA,
+    migrations: PATHS.MIGRATIONS
+}, "System paths resolved");
+
 // Initialize Database
 logger.info({ domain: "SYSTEM" }, "Initializing PiBooru...");
 await initDb();
