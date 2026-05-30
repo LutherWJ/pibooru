@@ -68,6 +68,7 @@ export class PostModel {
     let isAscending = false;
 
     switch (query.order) {
+        case "random": orderByField = "RANDOM()"; isAscending = true; break;
         case "id_desc": orderByField = "id"; isAscending = false; break;
         case "id_asc": orderByField = "id"; isAscending = true; break;
         case "oldest": orderByField = "created_at"; isAscending = true; break;
@@ -78,7 +79,7 @@ export class PostModel {
     let effectiveAscending = isAscending;
     let reverseResults = false;
 
-    if (query.before_id) {
+    if (query.before_id && query.order !== "random") {
       // In ID DESC (default), "before" in the list means older posts (lower ID)
       // In ID ASC, "before" in the list means older posts (lower ID)
       // Wait, "before" in the list ALWAYS means "closer to the start of the results".
@@ -97,7 +98,7 @@ export class PostModel {
         reverseResults = true;
       }
     }
-    if (query.after_id) {
+    if (query.after_id && query.order !== "random") {
       conditions.push("id > ?");
       params.push(query.after_id);
       if (!isAscending) {
@@ -106,8 +107,10 @@ export class PostModel {
       }
     }
 
-    const direction = effectiveAscending ? "ASC" : "DESC";
-    const orderBy = `ORDER BY ${orderByField} ${direction}, id ${direction}`;
+    const direction = (query.order === "random") ? "" : (effectiveAscending ? "ASC" : "DESC");
+    const orderBy = query.order === "random" 
+      ? `ORDER BY RANDOM()`
+      : `ORDER BY ${orderByField} ${direction}, id ${direction}`;
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     const limitVal = query.limit || limit;

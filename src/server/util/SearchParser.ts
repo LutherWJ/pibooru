@@ -63,7 +63,10 @@ export class SearchParser {
             break;
           }
           case "order": {
-            query.order = value.toLowerCase();
+            const v = value.toLowerCase();
+            if (v === "random" || v === "id_desc" || v === "id_asc" || v === "oldest" || v === "newest") {
+              query.order = v;
+            }
             break;
           }
           case "id": {

@@ -226,8 +226,8 @@
           return;
         }
 
-        // 5. Navigate Back (only if none of the above and on post page)
-        if (window.location.pathname.startsWith('/post/')) {
+      // 5. Navigate Back (only if none of the above and on post/viewer page)
+        if (window.location.pathname.startsWith('/post/') || window.location.pathname.startsWith('/viewer')) {
           e.preventDefault();
           this.goBack();
           return;
@@ -241,6 +241,23 @@
       if (isInput) {
         this.handleInputKey(e, target as HTMLInputElement | HTMLTextAreaElement);
         return;
+      }
+
+      // Viewer Navigation Overrides
+      if (window.location.pathname.startsWith('/viewer')) {
+        switch (key) {
+          case 'l': case 'arrowright': case 'd':
+            this.navigatePage('next');
+            return;
+          case 'h': case 'arrowleft': case 'a':
+            this.navigatePage('prev');
+            return;
+          case '/': case 's': case 'q':
+            e.preventDefault();
+            const searchInput = document.getElementById('viewer-tags-input');
+            if (searchInput) searchInput.focus();
+            return;
+        }
       }
 
       switch (key) {
@@ -295,7 +312,7 @@
     }
 
     private navigatePage(dir: 'next' | 'prev') {
-      const link = document.querySelector(`#paginator a[rel="${dir}"]`) as HTMLElement;
+      const link = document.querySelector(`a[rel="${dir}"]`) as HTMLElement;
       if (link) link.click();
     }
 
