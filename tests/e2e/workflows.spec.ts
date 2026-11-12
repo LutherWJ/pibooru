@@ -1,39 +1,49 @@
-import { test, expect } from '@playwright/test';
+import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { startE2EServer, stopE2EServer } from "./test-server";
+import { createAuthenticatedBrowser } from "./auth.setup";
+import type { TestBrowser } from "./browser";
 
-test.describe('Core Workflows', () => {
-  test('should upload an image and show it in the gallery', async ({ page }) => {
-    await page.goto('/upload');
-    const fileChooserPromise = page.waitForEvent('filechooser');
-    await page.locator('#file-input').click();
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles('tests/assets/test-image-1.png');
+describe("Core Workflows", () => {
+  let browser: TestBrowser;
 
-    const uniqueTag = `tag_${Date.now()}`;
-    await page.locator('textarea[name="tags"]').fill(uniqueTag);
-    await page.locator('#upload-button').click();
-
-    await page.waitForURL('/');
-    await page.goto(`/?tags=${uniqueTag}`);
-    await expect(page.locator('.post-thumbnail').first()).toBeVisible();
-    await expect(page.locator('.tag-list')).toContainText(uniqueTag);
+  beforeAll(async () => {
+    await startE2EServer();
+    browser = await createAuthenticatedBrowser();
   });
 
-  test('should search for a post by tag', async ({ page }) => {
-    const searchTag = `search_${Date.now()}`;
-    await page.goto('/upload');
-    const fileChooserPromise = page.waitForEvent('filechooser');
-    await page.locator('#file-input').click();
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles('tests/assets/test-image-2.png');
-    await page.locator('textarea[name="tags"]').fill(searchTag);
-    await page.locator('#upload-button').click();
-    await page.waitForURL('/');
+  afterAll(async () => {
+    await browser?.close();
+    stopE2EServer();
+  });
 
-    await page.locator('#tags').fill(searchTag);
-    await page.keyboard.press('Enter');
-    
-    await expect(page).toHaveURL(new RegExp(`\\/\\?tags=${searchTag}`));
-    await expect(page.locator('.post-thumbnail')).toContainText(''); // Ensure at least one thumbnail is there
-    await expect(page.locator('.tag-list')).toContainText(searchTag);
+  test("should upload an image and show it in the gallery", async () => {
+    await browser.goto("/upload");
+    await browser.setFileInput("#file-input", "tests/assets/test-image-1.png");
+
+    const uniqueTag = `tag_${Date.now()}`;
+    await browser.fill('textarea[name="tags"]', uniqueTag);
+    await browser.click("#upload-button");
+
+    await browser.waitForURL(/\/$/);
+    await browser.goto(`/?tags=${uniqueTag}`);
+    await browser.waitForSelector(".post-thumbnail");
+    expect(await browser.isVisible(".post-thumbnail")).toBe(true);
+    expect(await browser.innerText(".tag-list")).toContain(uniqueTag.replace(/_/g, ' '));
+  });
+
+  test("should search for a post by tag", async () => {
+    const searchTag = `search_${Date.now()}`;
+    await browser.goto("/upload");
+    await browser.setFileInput("#file-input", "tests/assets/test-image-2.png");
+    await browser.fill('textarea[name="tags"]', searchTag);
+    await browser.click("#upload-button");
+    await browser.waitForURL(/\/$/);
+
+    await browser.click("#tags");
+    await browser.fill("#tags", searchTag);
+    await browser.evaluate("document.querySelector('#tags')?.closest('form')?.requestSubmit()");
+
+    await browser.waitForURL(new RegExp(`\\/\\?tags=${searchTag}`));
+    expect(await browser.innerText(".tag-list")).toContain(searchTag.replace(/_/g, ' '));
   });
 });

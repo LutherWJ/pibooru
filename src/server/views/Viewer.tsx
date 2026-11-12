@@ -148,3 +148,27 @@ export const Viewer: FC<ViewerProps> = ({ post, tags, nextUrl, prevUrl }) => {
     </div>
   );
 };
+
+export interface ViewerPageProps extends ViewerProps {}
+
+/**
+ * Full-page standalone wrapper for the viewer to avoid standard layout interference.
+ */
+export const ViewerPage: FC<ViewerPageProps> = (props) => {
+  return (
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Viewer - PiBooru</title>
+        <link rel="stylesheet" href="/public/css/main.css" />
+        <script src="/public/js/htmx.min.js" defer></script>
+        <script src="/public/dist/index.js" defer></script>
+      </head>
+      <body hx-boost="true" style="margin: 0; padding: 0; background: #000; overflow: hidden;">
+        <Viewer {...props} />
+      </body>
+    </html>
+  );
+};
+

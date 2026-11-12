@@ -119,4 +119,66 @@ describe("MediaService (FFmpeg)", () => {
     const title2 = (await new Response(probe2).text()).trim();
     expect(title2).toBe("");
   });
+
+  describe("Animated WebP Support", () => {
+    const ANIM_WEBP = join(TEST_DIR, "animated.webp");
+    const ANIM_THUMB = join(TEST_DIR, "anim_thumb.webp");
+    const ANIM_STRIPPED = join(TEST_DIR, "anim_stripped.webp");
+
+    beforeAll(async () => {
+      // Create a 2-frame 320x240 animated WebP
+      const animProc = Bun.spawn([
+        CONFIG.FFMPEG_PATH, "-y",
+        "-f", "lavfi", "-i", "color=c=blue:s=320x240",
+        "-f", "lavfi", "-i", "color=c=green:s=320x240",
+        "-filter_complex", "[0:v]trim=duration=1[v0];[1:v]trim=duration=1[v1];[v0][v1]concat=n=2:v=1:a=0",
+        ANIM_WEBP
+      ]);
+      await animProc.exited;
+    });
+
+    it("should probe animated WebP correctly", async () => {
+      const meta = await MediaService.probe(ANIM_WEBP);
+      expect(meta.width).toBe(320);
+      expect(meta.height).toBe(240);
+      expect(meta.mimeType).toBe("webp");
+      expect(meta.isAnimated).toBe(true);
+      expect(meta.duration).toBeGreaterThan(0);
+    });
+
+    it("should generate thumbnail for animated WebP", async () => {
+      await MediaService.generateThumbnail(ANIM_WEBP, ANIM_THUMB);
+      const stats = await stat(ANIM_THUMB);
+      expect(stats.size).toBeGreaterThan(0);
+
+      const meta = await MediaService.probe(ANIM_THUMB);
+      expect(meta.mimeType).toBe("webp");
+      expect(meta.width).toBe(300);
+      expect(meta.height).toBe(225);
+    });
+
+    it("should strip metadata from animated WebP without failure", async () => {
+      await MediaService.stripMetadata(ANIM_WEBP, ANIM_STRIPPED);
+      const stats = await stat(ANIM_STRIPPED);
+      expect(stats.size).toBeGreaterThan(0);
+
+      const meta = await MediaService.probe(ANIM_STRIPPED);
+      expect(meta.width).toBe(320);
+      expect(meta.height).toBe(240);
+      expect(meta.mimeType).toBe("webp");
+      expect(meta.isAnimated).toBe(true);
+    });
+
+    it("should process full upload pipeline for animated WebP", async () => {
+      const result = await MediaService.processUpload(ANIM_WEBP, "deadbeef12345678", ".webp");
+      expect(result.metadata.width).toBe(320);
+      expect(result.metadata.height).toBe(240);
+      expect(result.metadata.isAnimated).toBe(true);
+
+      const origStat = await stat(result.originalPath);
+      const thumbStat = await stat(result.thumbPath);
+      expect(origStat.size).toBeGreaterThan(0);
+      expect(thumbStat.size).toBeGreaterThan(0);
+    });
+  });
 });

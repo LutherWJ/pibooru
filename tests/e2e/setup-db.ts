@@ -4,10 +4,9 @@ import { join } from "node:path";
 import { readdir, readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 
-async function setup() {
+export async function setup() {
   const DATA_DIR = process.env.DATA_DIR || "./data-test";
   const ASSETS_DIR = "./tests/assets";
-  const AUTH_DIR = "./playwright/.auth";
   
   console.log(`E2E Setup: Using DATA_DIR=${DATA_DIR}`);
 
@@ -21,11 +20,6 @@ async function setup() {
     mkdirSync(ASSETS_DIR, { recursive: true });
   }
 
-  // Clear auth state to ensure fresh login if needed
-  if (existsSync(AUTH_DIR)) {
-    rmSync(AUTH_DIR, { recursive: true, force: true });
-  }
-  mkdirSync(AUTH_DIR, { recursive: true });
 
   // 2. Generate 10 unique images if they don't exist or just overwrite them
   for (let i = 1; i <= 10; i++) {
@@ -84,4 +78,6 @@ async function setup() {
   db.close();
 }
 
-setup().catch(console.error);
+if (import.meta.main) {
+  setup().catch(console.error);
+}

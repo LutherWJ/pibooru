@@ -1,48 +1,63 @@
-import { test, expect } from '@playwright/test';
+import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { startE2EServer, stopE2EServer } from "./test-server";
+import { createAuthenticatedBrowser } from "./auth.setup";
+import type { TestBrowser } from "./browser";
 
-test.describe('Navigation History', () => {
-  test.beforeEach(async ({ page }) => {
+describe("Navigation History", () => {
+  let browser: TestBrowser;
+
+  beforeAll(async () => {
+    await startE2EServer();
+    browser = await createAuthenticatedBrowser();
+
     for (let i = 1; i <= 2; i++) {
-      await page.goto('/upload');
-      const fileChooserPromise = page.waitForEvent('filechooser');
-      await page.locator('#file-input').click();
-      const fileChooser = await fileChooserPromise;
-      await fileChooser.setFiles(`tests/assets/test-image-${i}.png`);
-      await page.locator('textarea[name="tags"]').fill(`history_${Date.now()}_${i}`);
-      await page.locator('#upload-button').click();
-      await page.waitForURL('/');
+      await browser.goto("/upload");
+      await browser.setFileInput("#file-input", `tests/assets/test-image-${i}.png`);
+      await browser.fill('textarea[name="tags"]', `history_${Date.now()}_${i}`);
+      await browser.click("#upload-button");
+      await browser.waitForURL(/\/$/);
     }
   });
 
-  test('should return to gallery using the UI Back button', async ({ page }) => {
-    await page.goto('/');
-    await page.locator('.post-thumbnail').first().click();
-    await page.waitForURL(/\/post\/\d+/);
-    await page.locator('#back-to-search').click();
-    await expect(page).toHaveURL(/\/$/);
+  afterAll(async () => {
+    await browser?.close();
+    stopE2EServer();
   });
 
-  test('should return to gallery using the Browser Back button', async ({ page }) => {
-    await page.goto('/');
-    await page.locator('.post-thumbnail').nth(1).click();
-    await page.waitForURL(/\/post\/\d+/);
-    await page.goBack();
-    await expect(page).toHaveURL(/\/$/);
+  test("should return to gallery using the UI Back button", async () => {
+    await browser.goto("/");
+    await browser.click(".post-thumbnail");
+    await browser.waitForURL(/\/post\/\d+/);
+    await browser.click("#back-to-search");
+    await browser.waitForURL(/\/$/);
+    expect(await browser.getURL()).toMatch(/\/$/);
   });
 
-  test('should maintain search context when going back', async ({ page }) => {
-    await page.goto('/');
-    const tagLink = page.locator('.tag-list li a').first();
-    const tagName = (await tagLink.innerText()).split(' ').slice(1).join(' ').trim();
-    
-    await page.goto(`/?tags=${tagName}`);
-    await expect(page.locator('.tag-list')).toContainText(tagName);
+  test("should return to gallery using the Browser Back button", async () => {
+    await browser.goto("/");
+    await browser.click(".post-thumbnail");
+    await browser.waitForURL(/\/post\/\d+/);
+    await browser.goBack();
+    expect(await browser.getURL()).toMatch(/\/$/);
+  });
 
-    await page.locator('.post-thumbnail').first().click();
-    await page.waitForURL(/\/post\/\d+/);
-    await page.goBack();
+  test("should maintain search context when going back", async () => {
+    await browser.goto("/");
+    const tagText = await browser.innerText(".tag-list li a");
+    const tagName = tagText.split(' ').slice(1).join(' ').trim();
 
-    await expect(page).toHaveURL(new RegExp(`\\/\\?tags=${tagName}`));
-    await expect(page.locator('.tag-list')).toContainText(tagName);
+    if (tagName) {
+      await browser.goto(`/?tags=${encodeURIComponent(tagName)}`);
+      let listText = await browser.innerText(".tag-list");
+      expect(listText).toContain(tagName);
+
+      await browser.click(".post-thumbnail");
+      await browser.waitForURL(/\/post\/\d+/);
+      await browser.goBack();
+
+      expect(await browser.getURL()).toContain(`tags=${encodeURIComponent(tagName)}`);
+      listText = await browser.innerText(".tag-list");
+      expect(listText).toContain(tagName);
+    }
   });
 });

@@ -1,27 +1,43 @@
-import { test, expect } from '@playwright/test';
+import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { startE2EServer, stopE2EServer } from "./test-server";
+import { createAuthenticatedBrowser } from "./auth.setup";
+import type { TestBrowser } from "./browser";
 
-test.describe('Double-Back Bug Reproduction', () => {
-  test('should return to gallery with a single back action after editing tags', async ({ page }) => {
-    await page.goto('/upload');
-    const fileChooserPromise = page.waitForEvent('filechooser');
-    await page.locator('#file-input').click();
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles('tests/assets/test-image-1.png');
-    const uniqueTag = `bug_${Date.now()}`;
-    await page.locator('textarea[name="tags"]').fill(uniqueTag);
-    await page.locator('#upload-button').click();
-    await page.waitForURL('/');
+describe("Double-Back Bug Reproduction", () => {
+  let browser: TestBrowser;
 
-    await page.locator('.post-thumbnail').first().click();
-    await page.waitForURL(/\/post\/\d+/);
-
-    await page.locator('#edit-tags-link').click();
-    await page.locator('#edit-tags-form textarea').fill(`${uniqueTag} fixed`);
-    await page.locator('#edit-tags-form button[type="submit"]').click();
-    await expect(page.locator('.tag-list')).toContainText('fixed');
-
-    await page.goBack();
-    await expect(page).toHaveURL(/\/$/);
-    await expect(page.locator('.tag-list')).toContainText(uniqueTag);
+  beforeAll(async () => {
+    await startE2EServer();
+    browser = await createAuthenticatedBrowser();
   });
+
+  afterAll(async () => {
+    await browser?.close();
+    stopE2EServer();
+  });
+
+  test("should return to gallery with a single back action after editing tags", async () => {
+    await browser.goto("/upload");
+    await browser.setFileInput("#file-input", "tests/assets/test-image-1.png");
+    const uniqueTag = `bug_${Date.now()}`;
+    await browser.fill('textarea[name="tags"]', uniqueTag);
+    await browser.click("#upload-button");
+    await browser.waitForURL(/\/$/);
+
+    await browser.click(".post-thumbnail");
+    await browser.waitForURL(/\/post\/\d+/);
+
+    await browser.click("#edit-tags-link");
+    await browser.fill("#edit-tags-form textarea", `${uniqueTag} fixed`);
+    await browser.click('#edit-tags-form button[type="submit"]');
+
+    await browser.waitForSelector(".tag-list");
+    const tagListText = await browser.innerText(".tag-list");
+    expect(tagListText).toContain("fixed");
+
+    await browser.goBack();
+    expect(await browser.getURL()).toMatch(/\/$/);
+    const homeTagList = await browser.innerText(".tag-list");
+    expect(homeTagList).toContain(uniqueTag.replace(/_/g, ' '));
+  }, 30000);
 });

@@ -34,9 +34,16 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .DS_Store
 
 hono-jsx-patterns/
+*.skill
 *.skill/
 db.sqlite
-
+*.sqlite-wal
+*.sqlite-shm
 
 data/
-playwright/.auth
+data-test/
+playwright/
+playwright-report/
+test-results/
+dist-server/
+

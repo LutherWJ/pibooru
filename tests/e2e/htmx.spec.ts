@@ -1,37 +1,49 @@
-import { test, expect } from '@playwright/test';
+import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { startE2EServer, stopE2EServer } from "./test-server";
+import { createAuthenticatedBrowser } from "./auth.setup";
+import { TagModel } from "../../src/server/models/Tag";
+import type { TestBrowser } from "./browser";
 
-test.describe('HTMX Interactions', () => {
-  test('should show tag suggestions', async ({ page }) => {
-    await page.goto('/upload');
-    // We just uploaded several images with tags starting with 'tag_'
-    await page.locator('textarea[name="tags"]').fill('tag_');
-    const suggestion = page.locator('.tag-suggestion').first();
-    await expect(suggestion).toBeVisible({ timeout: 10000 });
+describe("HTMX Interactions", () => {
+  let browser: TestBrowser;
+
+  beforeAll(async () => {
+    await startE2EServer();
+    TagModel.getOrCreate("tag_example", "general");
+    browser = await createAuthenticatedBrowser();
   });
 
-  test('should update tags via HTMX on post detail page', async ({ page }) => {
-    // 1. Upload a fresh post to be sure it exists
+  afterAll(async () => {
+    await browser?.close();
+    stopE2EServer();
+  });
+
+  test("should show tag suggestions", async () => {
+    await browser.goto("/upload");
+    await browser.fill('textarea[name="tags"]', "tag_");
+    await browser.waitForSelector(".suggestion-item", 5000);
+    const visible = await browser.isVisible(".suggestion-item");
+    expect(visible).toBe(true);
+  });
+
+  test("should update tags via HTMX on post detail page", async () => {
     const uniqueTag = `htmx_upd_${Date.now()}`;
-    await page.goto('/upload');
-    const fileChooserPromise = page.waitForEvent('filechooser');
-    await page.locator('#file-input').click();
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles('tests/assets/test-image-1.png');
-    await page.locator('textarea[name="tags"]').fill(uniqueTag);
-    await page.locator('#upload-button').click();
-    await page.waitForURL('/');
+    await browser.goto("/upload");
+    await browser.setFileInput("#file-input", "tests/assets/test-image-1.png");
+    await browser.fill('textarea[name="tags"]', uniqueTag);
+    await browser.click("#upload-button");
+    await browser.waitForURL(/\/$/);
 
-    // 2. Go to that specific post (it will be first if ordered by ID desc)
-    await page.locator('.post-thumbnail').first().click();
-    await page.waitForURL(/\/post\/\d+/);
+    await browser.click(".post-thumbnail");
+    await browser.waitForURL(/\/post\/\d+/);
 
-    // 3. Edit
-    await page.locator('#edit-tags-link').click();
+    await browser.click("#edit-tags-link");
     const editTag = `updated_${Date.now()}`;
-    await page.locator('#edit-tags-form textarea').fill(`${uniqueTag} ${editTag}`);
-    await page.locator('#edit-tags-form button[type="submit"]').click();
+    await browser.fill("#edit-tags-form textarea", `${uniqueTag} ${editTag}`);
+    await browser.click('#edit-tags-form button[type="submit"]');
 
-    // 4. Verify HTMX partial swap
-    await expect(page.locator('.tag-list')).toContainText(editTag.replace(/_/g, ' '), { timeout: 10000 });
+    await browser.waitForSelector(".tag-list");
+    const tagListText = await browser.innerText(".tag-list");
+    expect(tagListText).toContain(editTag.replace(/_/g, ' '));
   });
 });
