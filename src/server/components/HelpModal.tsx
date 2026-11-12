@@ -39,6 +39,16 @@ export const HelpModal: FC = () => {
               <li><kbd>o</kbd><span>Open original</span></li>
             </ul>
           </section>
+          <section>
+            <h3>Clean Mode (/clean)</h3>
+            <ul>
+              <li><kbd>a</kbd> / <kbd>q</kbd><span>Prev post</span></li>
+              <li><kbd>d</kbd> / <kbd>Space</kbd><span>Keep & Next</span></li>
+              <li><kbd>s</kbd> / <kbd>x</kbd><span>Delete & Next</span></li>
+              <li><kbd>/</kbd><span>Filter tags</span></li>
+              <li><kbd>Escape</kbd><span>Exit to Gallery</span></li>
+            </ul>
+          </section>
         </div>
       </div>
     </div>

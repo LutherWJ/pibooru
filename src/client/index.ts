@@ -56,6 +56,46 @@
       });
       window.addEventListener('popstate', () => this.cleanupMedia());
 
+      // Touch / Swipe Gestures for Clean Mode & Slideshow
+      let touchStartX = 0;
+      let touchStartY = 0;
+
+      document.addEventListener('touchstart', (e) => {
+        if (!window.location.pathname.startsWith('/clean')) return;
+        const target = e.target as HTMLElement;
+        if (target.closest('input, textarea, button, a')) return;
+        if (e.touches && e.touches[0]) {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+        }
+      }, { passive: true });
+
+      document.addEventListener('touchend', (e) => {
+        if (!window.location.pathname.startsWith('/clean')) return;
+        const target = e.target as HTMLElement;
+        if (target.closest('input, textarea, button, a')) return;
+        if (e.changedTouches && e.changedTouches[0]) {
+          const deltaX = e.changedTouches[0].clientX - touchStartX;
+          const deltaY = e.changedTouches[0].clientY - touchStartY;
+
+          // Horizontal swipe: left = next, right = prev
+          if (Math.abs(deltaX) > 50 && Math.abs(deltaY) < 100) {
+            if (deltaX < 0) {
+              this.cleanNavigate('next');
+            } else {
+              this.cleanNavigate('prev');
+            }
+            return;
+          }
+
+          // Vertical swipe down: delete!
+          if (deltaY > 80 && Math.abs(deltaX) < 100) {
+            this.cleanDelete();
+            return;
+          }
+        }
+      }, { passive: true });
+
       // Initial focus sync
       this.syncFocus();
     }
@@ -203,7 +243,7 @@
         }
 
         // 2. Clear Suggestions (if active)
-        const suggestionsContainer = document.querySelector('#suggestions-container, #edit-suggestions-container, #header-suggestions');
+        const suggestionsContainer = document.querySelector('#suggestions-container, #edit-suggestions-container, #header-suggestions, #clean-suggestions-container');
         if (suggestionsContainer && suggestionsContainer.children.length > 0) {
           this.clearAutocomplete(suggestionsContainer);
           e.preventDefault();
@@ -226,8 +266,8 @@
           return;
         }
 
-      // 5. Navigate Back (only if none of the above and on post/viewer page)
-        if (window.location.pathname.startsWith('/post/') || window.location.pathname.startsWith('/viewer')) {
+      // 5. Navigate Back (only if none of the above and on post/viewer/clean page)
+        if (window.location.pathname.startsWith('/post/') || window.location.pathname.startsWith('/viewer') || window.location.pathname.startsWith('/clean')) {
           e.preventDefault();
           this.goBack();
           return;
@@ -256,6 +296,49 @@
             e.preventDefault();
             const searchInput = document.getElementById('viewer-tags-input');
             if (searchInput) searchInput.focus();
+            return;
+        }
+      }
+
+      // Clean Mode Navigation & Triage Overrides (Left-Handed Keystrokes)
+      if (window.location.pathname.startsWith('/clean')) {
+        switch (key) {
+          // Left-handed Next / Keep: 'd', 'e', 'w', ' ' (Space), arrowright, 'l'
+          case 'd':
+          case 'e':
+          case 'w':
+          case ' ':
+          case 'arrowright':
+          case 'l':
+            e.preventDefault();
+            this.cleanNavigate('next');
+            return;
+
+          // Left-handed Prev: 'a', 'q', arrowleft, 'h'
+          case 'a':
+          case 'q':
+          case 'arrowleft':
+          case 'h':
+            e.preventDefault();
+            this.cleanNavigate('prev');
+            return;
+
+          // Left-handed Delete & Next: 's', 'x', 'delete'
+          case 's':
+          case 'x':
+          case 'delete':
+            e.preventDefault();
+            this.cleanDelete();
+            return;
+
+          // Quick search focus: '/'
+          case '/':
+            e.preventDefault();
+            const searchInput = document.getElementById('clean-tags-input') as HTMLInputElement;
+            if (searchInput) {
+              searchInput.focus();
+              searchInput.select();
+            }
             return;
         }
       }
@@ -316,6 +399,28 @@
       if (link) link.click();
     }
 
+    private cleanNavigate(dir: 'next' | 'prev') {
+      const stage = document.getElementById('clean-media-element');
+      const link = document.querySelector(dir === 'next' ? '#clean-next-btn, #clean-next-link' : '#clean-prev-btn, #clean-prev-link') as HTMLElement;
+      if (link && !link.hasAttribute('disabled')) {
+        if (stage) {
+          stage.classList.add(dir === 'next' ? 'cleaning-next' : 'cleaning-prev');
+        }
+        link.click();
+      }
+    }
+
+    private cleanDelete() {
+      const deleteBtn = document.getElementById('clean-delete-btn') as HTMLElement;
+      if (deleteBtn && !deleteBtn.hasAttribute('disabled')) {
+        const stage = document.getElementById('clean-media-element');
+        if (stage) {
+          stage.classList.add('cleaning-delete');
+        }
+        deleteBtn.click();
+      }
+    }
+
     private openOriginal() {
       const link = document.querySelector('section#options a[href^="/data/original/"]') as HTMLAnchorElement;
       if (link) window.open(link.href, '_blank');
@@ -327,7 +432,7 @@
     }
 
     private handleInputKey(e: KeyboardEvent, input: HTMLInputElement | HTMLTextAreaElement) {
-      const suggestionsContainer = input.parentElement?.querySelector('#suggestions-container, #edit-suggestions-container, #header-suggestions');
+      const suggestionsContainer = input.parentElement?.querySelector('#suggestions-container, #edit-suggestions-container, #header-suggestions, #clean-suggestions-container');
       
       // We don't return early if no container, because we want to handle Enter in textarea
       const suggestions = suggestionsContainer ? Array.from(suggestionsContainer.querySelectorAll('.suggestion-item')) as HTMLElement[] : [];
@@ -356,8 +461,8 @@
         }
       }
 
-      // Special handling for Enter in primary tag inputs (search box or edit textarea)
-      if (e.key === 'Enter' && (input.id === 'tags' || (input.tagName === 'TEXTAREA' && input.name === 'tags'))) {
+      // Special handling for Enter in primary tag inputs (search box, clean tags, or edit textarea)
+      if (e.key === 'Enter' && (input.id === 'tags' || input.id === 'clean-tags-input' || (input.tagName === 'TEXTAREA' && input.name === 'tags'))) {
         e.preventDefault();
         const form = input.closest('form');
         if (form) {
@@ -383,7 +488,7 @@
       const suggestionItem = target.closest('.suggestion-item') as HTMLElement;
       
       if (suggestionItem) {
-        const container = suggestionItem.closest('#suggestions-container, #edit-suggestions-container, #header-suggestions');
+        const container = suggestionItem.closest('#suggestions-container, #edit-suggestions-container, #header-suggestions, #clean-suggestions-container');
         if (container) {
           const input = container.parentElement?.querySelector('input, textarea') as HTMLInputElement | HTMLTextAreaElement;
           if (input) {
@@ -402,7 +507,7 @@
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
         // Short delay to allow clicks on suggestions to process first
         setTimeout(() => {
-          const suggestionsContainer = target.parentElement?.querySelector('#suggestions-container, #edit-suggestions-container, #header-suggestions');
+          const suggestionsContainer = target.parentElement?.querySelector('#suggestions-container, #edit-suggestions-container, #header-suggestions, #clean-suggestions-container');
           if (suggestionsContainer) {
             // Only clear if the focus didn't move to something inside the suggestions
             if (!suggestionsContainer.contains(document.activeElement)) {

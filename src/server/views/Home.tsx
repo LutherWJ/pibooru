@@ -75,8 +75,9 @@ export const Home: FC<HomeProps> = ({
             <div id="suggestions-container"></div>
             <button type="submit" style="display:none">Go</button>
           </form>
-          <div style="margin-top: 10px;">
-            <a href={`/viewer?tags=${searchQuery || ""}`} class="button" style="width: 100%; text-align: center; display: block;">Slideshow</a>
+          <div style="margin-top: 10px; display: flex; gap: 6px;">
+            <a href={`/viewer?tags=${searchQuery || ""}`} class="button" style="flex: 1; text-align: center; display: block;">Slideshow</a>
+            <a href={`/clean?tags=${searchQuery || ""}`} class="button" style="flex: 1; text-align: center; display: block;">Clean</a>
           </div>
         </section>
 

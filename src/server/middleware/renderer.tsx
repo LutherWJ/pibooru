@@ -52,6 +52,7 @@ export const renderer = jsxRenderer(({ children, title }: RendererProps & { chil
         <nav id="nav">
           <menu>
             <li><a href="/">Listing</a></li>
+            <li><a href="/clean">Clean</a></li>
             <li><a href="/upload">Upload</a></li>
             <li><a href="/wiki_pages">Wiki</a></li>
           </menu>
