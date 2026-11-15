@@ -1,5 +1,6 @@
 import type { FC } from 'hono/jsx';
 import type { Post } from '../db/schema';
+import { HelpModal } from '../components/HelpModal';
 
 interface ViewerProps {
   post: Post | null;
@@ -10,7 +11,7 @@ interface ViewerProps {
 
 /**
  * Immersive Media Viewer View
- * Optimized for full-screen immersion with an auto-hide overlay.
+ * Optimized for full-screen immersion with an auto-hide overlay and mobile-friendly controls.
  */
 export const Viewer: FC<ViewerProps> = ({ post, tags, nextUrl, prevUrl }) => {
   if (!post) {
@@ -34,21 +35,44 @@ export const Viewer: FC<ViewerProps> = ({ post, tags, nextUrl, prevUrl }) => {
           bottom: 0;
           left: 0;
           width: 100%;
-          background: rgba(0, 0, 0, 0.7);
-          padding: 20px;
+          box-sizing: border-box;
+          background: rgba(10, 10, 10, 0.85);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          padding: 16px 20px;
+          padding-bottom: max(16px, env(safe-area-inset-bottom));
           transform: translateY(100%);
-          transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+          transition: transform 0.25s ease-out, opacity 0.25s ease-out;
           opacity: 0;
           z-index: 100;
           display: flex;
           justify-content: center;
           align-items: center;
-          gap: 20px;
+          gap: 16px;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
         #viewer-container:hover #viewer-overlay,
-        #viewer-overlay:focus-within {
+        #viewer-overlay:focus-within,
+        #viewer-overlay.visible {
           transform: translateY(0);
           opacity: 1;
+        }
+        .viewer-toggle-btn {
+          position: absolute;
+          top: 14px;
+          right: 14px;
+          z-index: 90;
+          background: rgba(20, 20, 20, 0.75);
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          color: #eee;
+          padding: 6px 14px;
+          border-radius: 6px;
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          display: none;
         }
         .viewer-media {
           max-width: 100%;
@@ -81,14 +105,17 @@ export const Viewer: FC<ViewerProps> = ({ post, tags, nextUrl, prevUrl }) => {
           gap: 10px;
           width: 100%;
           max-width: 600px;
+          position: relative;
         }
         #viewer-search-form input {
           flex-grow: 1;
+          min-width: 0;
           background: #222;
           border: 1px solid #444;
           color: #fff;
           padding: 8px 12px;
           border-radius: 4px;
+          font-size: 14px;
         }
         #viewer-search-form button {
           background: #3b82f6;
@@ -97,8 +124,75 @@ export const Viewer: FC<ViewerProps> = ({ post, tags, nextUrl, prevUrl }) => {
           padding: 8px 16px;
           border-radius: 4px;
           cursor: pointer;
+          font-weight: 500;
+          white-space: nowrap;
+        }
+        .viewer-actions {
+          display: flex;
+          gap: 10px;
+          flex-shrink: 0;
+        }
+        .viewer-actions .button {
+          min-height: 38px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          box-sizing: border-box;
+        }
+        @media (max-width: 768px) {
+          .viewer-toggle-btn {
+            display: block;
+          }
+          #viewer-overlay {
+            flex-direction: column;
+            gap: 12px;
+            padding: 12px 14px;
+            padding-bottom: max(12px, env(safe-area-inset-bottom));
+          }
+          #viewer-search-form {
+            max-width: 100%;
+          }
+          #viewer-search-form input {
+            padding: 10px 12px;
+            font-size: 14px;
+          }
+          #viewer-search-form button {
+            padding: 10px 16px;
+            font-size: 14px;
+          }
+          #viewer-suggestions-container {
+            left: 0 !important;
+            transform: none !important;
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+          .viewer-actions {
+            width: 100%;
+            gap: 8px;
+          }
+          .viewer-actions .button {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            font-size: 14px;
+            min-height: 44px;
+          }
+          .nav-link {
+            width: 20%;
+            font-size: 2.5rem;
+          }
         }
       `}</style>
+
+      {/* Mobile Menu Toggle Button */}
+      <button 
+        id="viewer-menu-toggle" 
+        class="viewer-toggle-btn" 
+        type="button" 
+        aria-label="Toggle menu"
+      >
+        Menu
+      </button>
 
       {isVideo ? (
         <video 
@@ -167,6 +261,7 @@ export const ViewerPage: FC<ViewerPageProps> = (props) => {
       </head>
       <body hx-boost="true" style="margin: 0; padding: 0; background: #000; overflow: hidden;">
         <Viewer {...props} />
+        <HelpModal />
       </body>
     </html>
   );

@@ -18,10 +18,21 @@
       // Use delegation for all events to be HTMX-friendly
       document.addEventListener('keydown', (e) => this.handleKeyDown(e));
       document.addEventListener('click', (e) => {
-        // Prevent intercepting clicks in non-boosted forms (like Login)
         const target = e.target as HTMLElement;
-        if (target.closest('form:not([hx-boost="true"]), [hx-boost="false"]')) {
-          return;
+
+        // Toggle mobile viewer overlay menu
+        if (target && typeof target.closest === 'function') {
+          if (target.id === 'viewer-menu-toggle' || target.closest('#viewer-menu-toggle')) {
+            e.preventDefault();
+            const overlay = document.getElementById('viewer-overlay');
+            if (overlay) overlay.classList.toggle('visible');
+            return;
+          }
+
+          // Prevent intercepting clicks in non-boosted forms (like Login)
+          if (target.closest('form:not([hx-boost="true"]), [hx-boost="false"]')) {
+            return;
+          }
         }
 
         this.handleMouseClick(e);
@@ -61,9 +72,9 @@
       let touchStartY = 0;
 
       document.addEventListener('touchstart', (e) => {
-        if (!window.location.pathname.startsWith('/clean')) return;
+        if (!window.location.pathname.startsWith('/clean') && !window.location.pathname.startsWith('/viewer')) return;
         const target = e.target as HTMLElement;
-        if (target.closest('input, textarea, button, a')) return;
+        if (target && typeof target.closest === 'function' && target.closest('input, textarea, button, a')) return;
         if (e.touches && e.touches[0]) {
           touchStartX = e.touches[0].clientX;
           touchStartY = e.touches[0].clientY;
@@ -71,27 +82,43 @@
       }, { passive: true });
 
       document.addEventListener('touchend', (e) => {
-        if (!window.location.pathname.startsWith('/clean')) return;
+        if (!window.location.pathname.startsWith('/clean') && !window.location.pathname.startsWith('/viewer')) return;
         const target = e.target as HTMLElement;
-        if (target.closest('input, textarea, button, a')) return;
+        if (target && typeof target.closest === 'function' && target.closest('input, textarea, button, a')) return;
         if (e.changedTouches && e.changedTouches[0]) {
           const deltaX = e.changedTouches[0].clientX - touchStartX;
           const deltaY = e.changedTouches[0].clientY - touchStartY;
 
           // Horizontal swipe: left = next, right = prev
           if (Math.abs(deltaX) > 50 && Math.abs(deltaY) < 100) {
-            if (deltaX < 0) {
-              this.cleanNavigate('next');
-            } else {
-              this.cleanNavigate('prev');
+            if (window.location.pathname.startsWith('/clean')) {
+              if (deltaX < 0) {
+                this.cleanNavigate('next');
+              } else {
+                this.cleanNavigate('prev');
+              }
+            } else if (window.location.pathname.startsWith('/viewer')) {
+              if (deltaX < 0) {
+                this.navigatePage('next');
+              } else {
+                this.navigatePage('prev');
+              }
             }
             return;
           }
 
-          // Vertical swipe down: delete!
-          if (deltaY > 80 && Math.abs(deltaX) < 100) {
+          // Vertical swipe down: delete in clean mode!
+          if (window.location.pathname.startsWith('/clean') && deltaY > 80 && Math.abs(deltaX) < 100) {
             this.cleanDelete();
             return;
+          }
+
+          // Tap gesture to toggle menu on viewer
+          if (window.location.pathname.startsWith('/viewer') && Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) {
+            const overlay = document.getElementById('viewer-overlay');
+            if (overlay) {
+              overlay.classList.toggle('visible');
+            }
           }
         }
       }, { passive: true });
@@ -112,6 +139,7 @@
 
     private handleModalClick(e: MouseEvent) {
       const target = e.target as HTMLElement;
+      if (!target || typeof target.closest !== 'function') return;
 
       // Intercept Back to Gallery button
       if (target.id === 'back-to-search' || target.closest('#back-to-search')) {
@@ -124,7 +152,7 @@
         e.preventDefault();
         this.toggleHelp();
       }
-      if (target.id === 'help-modal' || target.classList.contains('close-modal')) {
+      if (target.id === 'help-modal' || (target.classList && target.classList.contains('close-modal'))) {
         this.hideHelp();
       }
     }
@@ -147,7 +175,9 @@
       
       if (e) {
         const target = e.target as HTMLElement;
-        toggleTrigger = target.closest('[data-toggle-visibility]') as HTMLElement;
+        if (target && typeof target.closest === 'function') {
+          toggleTrigger = target.closest('[data-toggle-visibility]') as HTMLElement;
+        }
       } else if (triggerSelector) {
         toggleTrigger = document.querySelector(triggerSelector);
       }
@@ -221,8 +251,8 @@
 
     private handleKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement;
-      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-      const isExplicitlyUnboosted = !!target.closest('[hx-boost="false"]');
+      const isInput = !!(target && target.tagName && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable));
+      const isExplicitlyUnboosted = !!(target && typeof target.closest === 'function' && target.closest('[hx-boost="false"]'));
       const key = e.key.toLowerCase();
 
       // If we are in an explicitly un-boosted area (like Login), completely ignore all hotkeys
@@ -243,7 +273,7 @@
         }
 
         // 2. Clear Suggestions (if active)
-        const suggestionsContainer = document.querySelector('#suggestions-container, #edit-suggestions-container, #header-suggestions, #clean-suggestions-container');
+        const suggestionsContainer = document.querySelector('#suggestions-container, #edit-suggestions-container, #header-suggestions, #clean-suggestions-container, #viewer-suggestions-container');
         if (suggestionsContainer && suggestionsContainer.children.length > 0) {
           this.clearAutocomplete(suggestionsContainer);
           e.preventDefault();
@@ -266,8 +296,15 @@
           return;
         }
 
-      // 5. Navigate Back (only if none of the above and on post/viewer/clean page)
-        if (window.location.pathname.startsWith('/post/') || window.location.pathname.startsWith('/viewer') || window.location.pathname.startsWith('/clean')) {
+        // 5. Exit Clean Mode directly to Gallery
+        if (window.location.pathname.startsWith('/clean')) {
+          e.preventDefault();
+          window.location.href = '/';
+          return;
+        }
+
+        // 6. Navigate Back (only if none of the above and on post/viewer page)
+        if (window.location.pathname.startsWith('/post/') || window.location.pathname.startsWith('/viewer')) {
           e.preventDefault();
           this.goBack();
           return;
@@ -296,6 +333,10 @@
             e.preventDefault();
             const searchInput = document.getElementById('viewer-tags-input');
             if (searchInput) searchInput.focus();
+            return;
+          case '?':
+            e.preventDefault();
+            this.toggleHelp();
             return;
         }
       }
@@ -339,6 +380,11 @@
               searchInput.focus();
               searchInput.select();
             }
+            return;
+
+          case '?':
+            e.preventDefault();
+            this.toggleHelp();
             return;
         }
       }
@@ -432,7 +478,7 @@
     }
 
     private handleInputKey(e: KeyboardEvent, input: HTMLInputElement | HTMLTextAreaElement) {
-      const suggestionsContainer = input.parentElement?.querySelector('#suggestions-container, #edit-suggestions-container, #header-suggestions, #clean-suggestions-container');
+      const suggestionsContainer = input.parentElement?.querySelector('#suggestions-container, #edit-suggestions-container, #header-suggestions, #clean-suggestions-container, #viewer-suggestions-container');
       
       // We don't return early if no container, because we want to handle Enter in textarea
       const suggestions = suggestionsContainer ? Array.from(suggestionsContainer.querySelectorAll('.suggestion-item')) as HTMLElement[] : [];
@@ -461,8 +507,8 @@
         }
       }
 
-      // Special handling for Enter in primary tag inputs (search box, clean tags, or edit textarea)
-      if (e.key === 'Enter' && (input.id === 'tags' || input.id === 'clean-tags-input' || (input.tagName === 'TEXTAREA' && input.name === 'tags'))) {
+      // Special handling for Enter in primary tag inputs (search box, clean tags, viewer tags, or edit textarea)
+      if (e.key === 'Enter' && (input.id === 'tags' || input.id === 'clean-tags-input' || input.id === 'viewer-tags-input' || (input.tagName === 'TEXTAREA' && input.name === 'tags'))) {
         e.preventDefault();
         const form = input.closest('form');
         if (form) {
@@ -485,10 +531,11 @@
 
     private handleMouseClick(e: MouseEvent) {
       const target = e.target as HTMLElement;
+      if (!target || typeof target.closest !== 'function') return;
       const suggestionItem = target.closest('.suggestion-item') as HTMLElement;
       
       if (suggestionItem) {
-        const container = suggestionItem.closest('#suggestions-container, #edit-suggestions-container, #header-suggestions, #clean-suggestions-container');
+        const container = suggestionItem.closest('#suggestions-container, #edit-suggestions-container, #header-suggestions, #clean-suggestions-container, #viewer-suggestions-container');
         if (container) {
           const input = container.parentElement?.querySelector('input, textarea') as HTMLInputElement | HTMLTextAreaElement;
           if (input) {
@@ -507,7 +554,7 @@
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
         // Short delay to allow clicks on suggestions to process first
         setTimeout(() => {
-          const suggestionsContainer = target.parentElement?.querySelector('#suggestions-container, #edit-suggestions-container, #header-suggestions, #clean-suggestions-container');
+          const suggestionsContainer = target.parentElement?.querySelector('#suggestions-container, #edit-suggestions-container, #header-suggestions, #clean-suggestions-container, #viewer-suggestions-container');
           if (suggestionsContainer) {
             // Only clear if the focus didn't move to something inside the suggestions
             if (!suggestionsContainer.contains(document.activeElement)) {
@@ -627,8 +674,12 @@
     }
   }
 
-  // Initialize on DOM load
-  document.addEventListener('DOMContentLoaded', () => {
+  // Initialize on DOM load or immediately if DOM is already ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      (window as any).pibooru = new KeyboardManager();
+    });
+  } else {
     (window as any).pibooru = new KeyboardManager();
-  });
+  }
 })();

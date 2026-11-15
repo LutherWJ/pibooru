@@ -1,5 +1,6 @@
 import type { FC } from 'hono/jsx';
 import type { Post } from '../db/schema';
+import { HelpModal } from '../components/HelpModal';
 
 export interface CleanProps {
   post: Post | null;
@@ -197,20 +198,89 @@ export const CleanStage: FC<CleanProps> = ({
           opacity: 0 !important;
           transform: translateX(80px) scale(0.96) !important;
         }
+
+        @media (max-width: 768px) {
+          #clean-topbar {
+            height: auto !important;
+            padding: 8px 10px !important;
+            flex-wrap: wrap;
+            gap: 6px 10px;
+          }
+          .clean-topbar-left {
+            gap: 8px !important;
+          }
+          .clean-badge {
+            display: none !important;
+          }
+          .clean-dimensions {
+            display: none !important;
+          }
+          #clean-search-form {
+            order: 3;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin-top: 2px;
+          }
+          #clean-tags-input {
+            font-size: 14px !important;
+            padding: 8px 10px !important;
+          }
+          #clean-topbar .clean-btn {
+            padding: 6px 10px !important;
+            font-size: 12px !important;
+            min-height: 36px;
+          }
+          #clean-stage {
+            padding-top: 96px !important;
+            padding-bottom: 74px !important;
+          }
+          .clean-media {
+            max-height: calc(100vh - 175px) !important;
+          }
+          .hud-pills {
+            display: none !important;
+          }
+          #clean-dock {
+            height: auto !important;
+            min-height: 60px;
+            padding: 8px 12px !important;
+            padding-bottom: max(8px, env(safe-area-inset-bottom)) !important;
+          }
+          .clean-actions {
+            width: 100% !important;
+            gap: 8px !important;
+          }
+          .clean-actions .clean-btn,
+          .clean-actions button {
+            flex: 1 !important;
+            justify-content: center !important;
+            min-height: 44px !important;
+            padding: 8px 6px !important;
+            font-size: 13px !important;
+            box-sizing: border-box;
+          }
+          .clean-btn kbd {
+            display: none !important;
+          }
+          .clean-nav-link {
+            width: 18% !important;
+            font-size: 2.5rem !important;
+          }
+        }
       `}</style>
 
       {/* Top Bar */}
       <header id="clean-topbar" style={TOPBAR_STYLE}>
-        <div style="display: flex; align-items: center; gap: 14px;">
+        <div style="display: flex; align-items: center; gap: 14px;" class="clean-topbar-left">
           <a href="/" class="clean-btn btn-prev" style="padding: 4px 10px; font-size: 12px;">← Gallery</a>
           <span class="clean-badge">
-            <span style="font-size: 14px;">🧹</span> Clean Mode
+            Clean Mode
           </span>
           {post && (
             <span style="font-size: 13px; color: #9ca3af;">
               Post <strong style="color: #fff;">#{post.id}</strong>
               {post.width && post.height && (
-                <span style="margin-left: 8px; opacity: 0.7;">({post.width}×{post.height})</span>
+                <span class="clean-dimensions" style="margin-left: 8px; opacity: 0.7;">({post.width}×{post.height})</span>
               )}
             </span>
           )}
@@ -239,7 +309,7 @@ export const CleanStage: FC<CleanProps> = ({
           <button type="submit" class="clean-btn btn-prev" style="padding: 6px 12px; font-size: 12px;">Filter</button>
         </form>
 
-        <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px;" class="clean-topbar-right">
           <span style="font-size: 12px; color: #9ca3af;">
             Remaining: <strong style="color: #38bdf8;">{totalCount}</strong>
           </span>
@@ -314,7 +384,6 @@ export const CleanStage: FC<CleanProps> = ({
         </main>
       ) : (
         <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px;">
-          <div style="font-size: 3.5rem; margin-bottom: 12px;">🎉</div>
           <h2 style="font-size: 1.5rem; color: #fff; margin-bottom: 8px;">All Clean!</h2>
           <p style="color: #9ca3af; max-width: 400px; margin-bottom: 24px;">
             {tags ? `No more posts matching "${tags}".` : "No posts remaining to review in the board."}
@@ -331,7 +400,7 @@ export const CleanStage: FC<CleanProps> = ({
       {/* Toast Confirmation */}
       {message && (
         <div id="clean-toast" class="clean-toast">
-          🗑️ {message}
+          {message}
         </div>
       )}
 
@@ -349,7 +418,7 @@ export const CleanStage: FC<CleanProps> = ({
         </div>
 
         {/* Action Controls */}
-        <div style="display: flex; align-items: center; gap: 12px;">
+        <div class="clean-actions" style="display: flex; align-items: center; gap: 12px;">
           {/* Previous Button */}
           {prevUrl ? (
             <a 
@@ -379,7 +448,7 @@ export const CleanStage: FC<CleanProps> = ({
               class="clean-btn btn-delete"
               title="Delete this post and advance to next (S or X)"
             >
-              🗑️ Delete <kbd>S / X</kbd>
+              Delete <kbd>S / X</kbd>
             </button>
           )}
 
@@ -426,6 +495,7 @@ export const CleanPage: FC<CleanPageProps> = (props) => {
       </head>
       <body hx-boost="true" style="margin: 0; padding: 0; background: #0a0a0a; overflow: hidden;">
         <CleanStage {...props} />
+        <HelpModal />
       </body>
     </html>
   );
