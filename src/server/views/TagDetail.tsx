@@ -2,6 +2,12 @@ import type { FC } from 'hono/jsx';
 import type { Post, Tag } from '../db/schema';
 import { PostThumbnail } from '../components/PostThumbnail';
 
+const ADMIN_BOX_STYLE = "background: #111; padding: 15px; border: 1px solid #333;";
+const INPUT_STYLE = "background: #000; color: #fff; border: 1px solid #444; padding: 5px; width: 120px;";
+const ADD_BTN_STYLE = "background: #3b82f6; color: #fff; border: none; padding: 5px 10px; cursor: pointer;";
+const DEL_BTN_STYLE = "background: #ef4444; color: white; border: none; padding: 2px 5px; cursor: pointer; font-size: 10px;";
+const LIST_ITEM_STYLE = "display: flex; justify-content: space-between; margin-bottom: 5px;";
+
 interface TagDetailProps {
   tag: Tag;
   aliases: string[];
@@ -40,7 +46,7 @@ export const TagDetail: FC<TagDetailProps> = ({ tag, aliases, implications, post
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
           {/* Aliases Section */}
-          <section class="admin-box" style="background: #111; padding: 15px; border: 1px solid #333;">
+          <section class="admin-box" style={ADMIN_BOX_STYLE}>
             <h3>Aliases</h3>
             <p style="font-size: 11px; color: #888; margin-bottom: 10px;">
               Aliases map other terms to this tag. (e.g., "pup" → "dog")
@@ -48,13 +54,13 @@ export const TagDetail: FC<TagDetailProps> = ({ tag, aliases, implications, post
             
             <ul id="alias-list" style="margin-bottom: 15px;">
               {aliases.map(alias => (
-                <li style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <li style={LIST_ITEM_STYLE}>
                   <span>{alias}</span>
                   <button 
                     hx-delete={`/api/tags/${tag.name}/alias/${alias}`}
                     hx-target="closest li"
                     hx-swap="outerHTML"
-                    style="background: #ef4444; color: white; border: none; padding: 2px 5px; cursor: pointer; font-size: 10px;"
+                    style={DEL_BTN_STYLE}
                   >
                     Delete
                   </button>
@@ -69,14 +75,14 @@ export const TagDetail: FC<TagDetailProps> = ({ tag, aliases, implications, post
                 name="alias" 
                 placeholder="New alias..." 
                 required
-                style="background: #000; color: #fff; border: 1px solid #444; padding: 5px; width: 120px;"
+                style={INPUT_STYLE}
               />
-              <button type="submit" style="background: #3b82f6; color: #fff; border: none; padding: 5px 10px; cursor: pointer;">Add</button>
+              <button type="submit" style={ADD_BTN_STYLE}>Add</button>
             </form>
           </section>
 
           {/* Implications Section */}
-          <section class="admin-box" style="background: #111; padding: 15px; border: 1px solid #333;">
+          <section class="admin-box" style={ADMIN_BOX_STYLE}>
             <h3>Implications</h3>
             <p style="font-size: 11px; color: #888; margin-bottom: 10px;">
               When this tag is added, these tags are also added. (e.g., "dog" → "animal")
@@ -84,13 +90,13 @@ export const TagDetail: FC<TagDetailProps> = ({ tag, aliases, implications, post
 
             <ul id="implication-list" style="margin-bottom: 15px;">
               {implications.map(targetTag => (
-                <li style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <li style={LIST_ITEM_STYLE}>
                   <a href={`/tag/${targetTag.name}`} class={`tag-type-${targetTag.namespace}`}>{targetTag.name}</a>
                   <button 
                     hx-delete={`/api/tags/${tag.name}/implication/${targetTag.id}`}
                     hx-target="closest li"
                     hx-swap="outerHTML"
-                    style="background: #ef4444; color: white; border: none; padding: 2px 5px; cursor: pointer; font-size: 10px;"
+                    style={DEL_BTN_STYLE}
                   >
                     Delete
                   </button>
@@ -105,9 +111,9 @@ export const TagDetail: FC<TagDetailProps> = ({ tag, aliases, implications, post
                 name="target_tag" 
                 placeholder="Implies tag..." 
                 required
-                style="background: #000; color: #fff; border: 1px solid #444; padding: 5px; width: 120px;"
+                style={INPUT_STYLE}
               />
-              <button type="submit" style="background: #3b82f6; color: #fff; border: none; padding: 5px 10px; cursor: pointer;">Add</button>
+              <button type="submit" style={ADD_BTN_STYLE}>Add</button>
             </form>
           </section>
         </div>

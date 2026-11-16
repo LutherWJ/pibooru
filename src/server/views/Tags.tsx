@@ -1,6 +1,10 @@
 import type { FC } from 'hono/jsx';
 import type { Tag } from '../db/schema';
 
+const INPUT_STYLE = "width: 100%; background: #000; color: #fff; padding: 5px; border: 1px solid #333; margin-bottom: 10px;";
+const SUBMIT_BTN_STYLE = "width: 100%; background: #3b82f6; color: #fff; font-weight: bold; padding: 5px; border: none; cursor: pointer;";
+const TABLE_STYLE = "width: 100%; border-collapse: collapse; margin-top: 20px;";
+
 interface TagsProps {
   tags: Tag[];
   query: string;
@@ -27,11 +31,11 @@ export const Tags: FC<TagsProps> = ({ tags, query, page, totalCount, limit }) =>
               name="q" 
               value={query} 
               placeholder="Search tags..."
-              style="width: 100%; background: #000; color: #fff; padding: 5px; border: 1px solid #333; margin-bottom: 10px;"
+              style={INPUT_STYLE}
             />
             <button 
               type="submit"
-              style="width: 100%; background: #3b82f6; color: #fff; font-weight: bold; padding: 5px; border: none; cursor: pointer;"
+              style={SUBMIT_BTN_STYLE}
             >
               Search
             </button>
@@ -49,7 +53,7 @@ export const Tags: FC<TagsProps> = ({ tags, query, page, totalCount, limit }) =>
       <section id="content">
         <h1>Tags</h1>
 
-        <table class="tag-table" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <table class="tag-table" style={TABLE_STYLE}>
           <thead>
             <tr style="border-bottom: 2px solid #333; text-align: left;">
               <th style="padding: 10px;">Name</th>

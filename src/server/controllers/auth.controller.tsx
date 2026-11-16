@@ -17,7 +17,7 @@ export class AuthController {
         if (user) {
             await setSignedCookie(c, "session_id", user.id.toString(), CONFIG.COOKIE_SECRET, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
+                secure: CONFIG.isProduction,
                 sameSite: "Lax",
                 maxAge: 60 * 60 * 24 * 30 // 30 days
             });

@@ -1,5 +1,13 @@
 import type { FC } from 'hono/jsx';
 
+const FORM_CONTAINER_STYLE = "flex: 1; max-width: 500px;";
+const INPUT_FIELD_STYLE = "width: 100%; background: #000; color: #fff; padding: 5px; border: 1px solid #333;";
+const SELECT_FIELD_STYLE = "width: 100%; background: #000; color: #fff; padding: 5px; border: 1px solid #333;";
+const TEXTAREA_STYLE = "width: 100%; background: #000; color: #fff; padding: 5px; border: 1px solid #333; height: 100px; resize: vertical;";
+const POPUP_CONTAINER_STYLE = "position: absolute; width: 100%; background: #222; z-index: 10;";
+const SUBMIT_BTN_STYLE = "background: #3b82f6; color: #fff; font-weight: bold; padding: 10px 20px; border: none; cursor: pointer;";
+const QUEUE_LIST_STYLE = "list-style: none; padding: 0; max-height: 300px; overflow-y: auto; border: 1px solid #333; background: #111;";
+
 /**
  * Upload Page View
  * Refactored to match Danbooru styling.
@@ -26,7 +34,7 @@ export const Upload: FC = () => {
             action="/upload" 
             method="post" 
             enctype="multipart/form-data"
-            style="flex: 1; max-width: 500px;"
+            style={FORM_CONTAINER_STYLE}
             hx-boost="false"
           >
             <div style="margin-bottom: 15px;">
@@ -37,7 +45,7 @@ export const Upload: FC = () => {
                 name="file" 
                 multiple
                 required
-                style="width: 100%; background: #000; color: #fff; padding: 5px; border: 1px solid #333;"
+                style={INPUT_FIELD_STYLE}
               />
             </div>
 
@@ -46,7 +54,7 @@ export const Upload: FC = () => {
                 <label style="display: block; font-weight: bold; margin-bottom: 5px;">Rating</label>
                 <select 
                   name="rating" 
-                  style="width: 100%; background: #000; color: #fff; padding: 5px; border: 1px solid #333;"
+                  style={SELECT_FIELD_STYLE}
                 >
                   <option value="s">Safe</option>
                   <option value="q">Questionable</option>
@@ -60,7 +68,7 @@ export const Upload: FC = () => {
                   type="text" 
                   name="source" 
                   placeholder="https://..."
-                  style="width: 100%; background: #000; color: #fff; padding: 5px; border: 1px solid #333;"
+                  style={INPUT_FIELD_STYLE}
                 />
               </div>
             </div>
@@ -70,25 +78,25 @@ export const Upload: FC = () => {
               <textarea 
                 name="tags" 
                 placeholder="artist:picasso character:mona_lisa general:smile"
-                style="width: 100%; background: #000; color: #fff; padding: 5px; border: 1px solid #333; height: 100px; resize: vertical;"
+                style={TEXTAREA_STYLE}
                 hx-get="/partials/tags/suggestions"
                 hx-trigger="keyup changed delay:100ms"
                 hx-target="#suggestions-container"
               ></textarea>
-              <div id="suggestions-container" style="position: absolute; width: 100%; background: #222; z-index: 10;"></div>
+              <div id="suggestions-container" style={POPUP_CONTAINER_STYLE}></div>
             </div>
 
             <button 
               type="submit" 
               id="upload-button"
-              style="background: #3b82f6; color: #fff; font-weight: bold; padding: 10px 20px; border: none; cursor: pointer;"
+              style={SUBMIT_BTN_STYLE}
             >
               Upload
             </button>
 
             <div id="upload-queue" style="margin-top: 20px;">
               <h3 style="margin-bottom: 10px; font-size: 14px;">Queue</h3>
-              <ul id="queue-list" style="list-style: none; padding: 0; max-height: 300px; overflow-y: auto; border: 1px solid #333; background: #111;">
+              <ul id="queue-list" style={QUEUE_LIST_STYLE}>
                 <li style="padding: 10px; color: #666; text-align: center;">No files selected</li>
               </ul>
             </div>

@@ -2,6 +2,10 @@ import type { FC } from 'hono/jsx';
 import type { Post, Tag } from '../db/schema';
 import { PostThumbnail } from '../components/PostThumbnail';
 
+const SEARCH_ACTIONS_STYLE = "margin-top: 10px; display: flex; gap: 6px;";
+const SEARCH_BTN_STYLE = "flex: 1; text-align: center; display: block;";
+const EMPTY_STATE_STYLE = "padding: 20px; border: 2px dashed #333; text-align: center;";
+
 interface HomeProps {
   posts: Post[];
   tags: (Tag & { count: number })[];
@@ -75,9 +79,9 @@ export const Home: FC<HomeProps> = ({
             <div id="suggestions-container"></div>
             <button type="submit" style="display:none">Go</button>
           </form>
-          <div style="margin-top: 10px; display: flex; gap: 6px;">
-            <a href={`/viewer?tags=${searchQuery || ""}`} class="button" style="flex: 1; text-align: center; display: block;">Slideshow</a>
-            <a href={`/clean?tags=${searchQuery || ""}`} class="button" style="flex: 1; text-align: center; display: block;">Clean</a>
+          <div style={SEARCH_ACTIONS_STYLE}>
+            <a href={`/viewer?tags=${searchQuery || ""}`} class="button" style={SEARCH_BTN_STYLE}>Slideshow</a>
+            <a href={`/clean?tags=${searchQuery || ""}`} class="button" style={SEARCH_BTN_STYLE}>Clean</a>
           </div>
         </section>
 
@@ -103,14 +107,14 @@ export const Home: FC<HomeProps> = ({
         <div 
           id="post-grid"
           class="posts-container"
-          tabindex={0}
+          tabIndex={0}
         >
           {posts.length > 0 ? (
             posts.map((post, index) => (
               <PostThumbnail key={post.id} post={post} active={index === 0} />
             ))
           ) : (
-            <div style="padding: 20px; border: 2px dashed #333; text-align: center;">
+            <div style={EMPTY_STATE_STYLE}>
               <p>No posts found.</p>
               <a href="/upload" style="font-weight: bold;">Upload something?</a>
             </div>

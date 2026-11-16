@@ -44,7 +44,12 @@ function validateConfig() {
     process.exit(1);
   }
 
-  return result.data;
+  return {
+    ...result.data,
+    isProduction: result.data.NODE_ENV === "production",
+    isTest: result.data.NODE_ENV === "test",
+    isDevelopment: result.data.NODE_ENV === "development",
+  };
 }
 
 export const CONFIG = validateConfig();

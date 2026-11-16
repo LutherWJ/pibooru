@@ -1,6 +1,14 @@
 import type { FC } from 'hono/jsx';
 import type { Post, Tag } from '../db/schema';
 
+const BACK_BTN_STYLE = "width: 100%; text-align: center; display: block;";
+const EDIT_FORM_STYLE = "display: none; position: relative;";
+const TAGS_TEXTAREA_STYLE = "width: 100%; background: #000; color: #fff; border: 1px solid #333; height: 100px; font-size: 11px;";
+const SUGGESTIONS_POPUP_STYLE = "position: absolute; width: 100%; background: #222; z-index: 10;";
+const SAVE_BTN_STYLE = "background: #3b82f6; color: #fff; border: none; padding: 5px; width: 100%; margin-top: 5px; cursor: pointer;";
+const CANCEL_BTN_STYLE = "background: #444; color: #fff; border: none; padding: 5px; width: 100%; margin-top: 5px; cursor: pointer;";
+const MEDIA_STYLE = "max-width: 100%; max-height: 85vh;";
+
 interface PostDetailProps {
   post: Post;
   tags: Tag[];
@@ -25,7 +33,7 @@ export const PostDetail: FC<PostDetailProps> = ({ post, tags }) => {
     <>
       <aside id="sidebar">
         <div style="margin-bottom: 10px;">
-          <a href="/" id="back-to-search" class="button" style="width: 100%; text-align: center; display: block;" hx-disable="true">« Back to Gallery</a>
+          <a href="/" id="back-to-search" class="button" style={BACK_BTN_STYLE} hx-disable="true">« Back to Gallery</a>
         </div>
         <section id="tag-list" class="sidebar-box">
           <h2>Tags</h2>
@@ -83,21 +91,21 @@ export const PostDetail: FC<PostDetailProps> = ({ post, tags }) => {
           </ul>
         </section>
 
-        <section id="edit-tags-form" class="sidebar-box" style="display: none; position: relative;">
+        <section id="edit-tags-form" class="sidebar-box" style={EDIT_FORM_STYLE}>
           <h2>Edit Tags</h2>
           <form action={`/post/${post.id}/tags`} method="post" hx-replace-url="true">
             <textarea 
               name="tags" 
-              style="width: 100%; background: #000; color: #fff; border: 1px solid #333; height: 100px; font-size: 11px;"
+              style={TAGS_TEXTAREA_STYLE}
               hx-get="/partials/tags/suggestions"
               hx-trigger="keyup changed delay:100ms"
               hx-target="#edit-suggestions-container"
             >
               {tags.map(t => (t.namespace === 'general' ? t.name : `${t.namespace}:${t.name}`)).join(' ')}
             </textarea>
-            <div id="edit-suggestions-container" style="position: absolute; width: 100%; background: #222; z-index: 10;"></div>
-            <button type="submit" style="background: #3b82f6; color: #fff; border: none; padding: 5px; width: 100%; margin-top: 5px; cursor: pointer;">Save</button>
-            <button type="button" id="edit-tags-cancel" data-toggle-visibility="#edit-tags-form" style="background: #444; color: #fff; border: none; padding: 5px; width: 100%; margin-top: 5px; cursor: pointer;">Cancel</button>
+            <div id="edit-suggestions-container" style={SUGGESTIONS_POPUP_STYLE}></div>
+            <button type="submit" style={SAVE_BTN_STYLE}>Save</button>
+            <button type="button" id="edit-tags-cancel" data-toggle-visibility="#edit-tags-form" style={CANCEL_BTN_STYLE}>Cancel</button>
           </form>
         </section>
       </aside>
@@ -110,13 +118,13 @@ export const PostDetail: FC<PostDetailProps> = ({ post, tags }) => {
               controls 
               autoplay
               loop
-              style="max-width: 100%; max-height: 85vh;"
+              style={MEDIA_STYLE}
             />
           ) : (
             <img 
               src={originalUrl} 
               alt={`Post ${post.id}`}
-              style="max-width: 100%; max-height: 85vh;"
+              style={MEDIA_STYLE}
             />
           )}
         </div>
