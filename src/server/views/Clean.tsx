@@ -33,7 +33,12 @@ export const CleanStage: FC<CleanProps> = ({
     : '';
 
   return (
-    <div id="clean-container" style={CONTAINER_STYLE}>
+    <div 
+      id="clean-container" 
+      tabIndex={-1}
+      style={`${CONTAINER_STYLE} outline: none;`}
+      onclick="if (!event.target.closest('#clean-search-form, a, button, input')) { const active = document.activeElement; if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) active.blur(); }"
+    >
       <style>{`
         .clean-media {
           max-width: 96vw;
@@ -291,6 +296,7 @@ export const CleanStage: FC<CleanProps> = ({
           id="clean-search-form" 
           action="/clean" 
           method="get" 
+          onsubmit="const inp = document.getElementById('clean-tags-input'); if (inp) inp.blur();"
           style="display: flex; align-items: center; gap: 8px; position: relative; width: 380px; max-width: 40vw;"
         >
           <input 
@@ -489,9 +495,9 @@ export const CleanPage: FC<CleanPageProps> = (props) => {
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Clean Mode - PiBooru</title>
-        <link rel="stylesheet" href="/public/css/main.css" />
+        <link rel="stylesheet" href="/public/css/main.css?v=0.5.30" />
         <script src="/public/js/htmx.min.js" defer></script>
-        <script src="/public/dist/index.js" defer></script>
+        <script src="/public/dist/index.js?v=0.5.30" defer></script>
       </head>
       <body hx-boost="true" style="margin: 0; padding: 0; background: #0a0a0a; overflow: hidden;">
         <CleanStage {...props} />

@@ -125,6 +125,14 @@
 
       // Initial focus sync
       this.syncFocus();
+
+      // On clean mode, ensure focus is clear of inputs so keystrokes operate immediately
+      if (window.location.pathname.startsWith('/clean')) {
+        const active = document.activeElement as HTMLElement;
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+          active.blur();
+        }
+      }
     }
 
     private goBack() {
@@ -341,33 +349,39 @@
         }
       }
 
-      // Clean Mode Navigation & Triage Overrides (Left-Handed Keystrokes)
+      // Clean Mode Navigation & Triage Overrides (Left-Handed Keystrokes & Vim/Arrows)
       if (window.location.pathname.startsWith('/clean')) {
         switch (key) {
-          // Left-handed Next / Keep: 'd', 'e', 'w', ' ' (Space), arrowright, 'l'
+          // Next / Keep: 'd', 'e', 'w', ' ' (Space), arrowright, 'l', 'j', 'enter', 'n'
           case 'd':
           case 'e':
           case 'w':
           case ' ':
           case 'arrowright':
           case 'l':
+          case 'j':
+          case 'enter':
+          case 'n':
             e.preventDefault();
             this.cleanNavigate('next');
             return;
 
-          // Left-handed Prev: 'a', 'q', arrowleft, 'h'
+          // Prev: 'a', 'q', arrowleft, 'h', 'k', 'p'
           case 'a':
           case 'q':
           case 'arrowleft':
           case 'h':
+          case 'k':
+          case 'p':
             e.preventDefault();
             this.cleanNavigate('prev');
             return;
 
-          // Left-handed Delete & Next: 's', 'x', 'delete'
+          // Delete & Next: 's', 'x', 'delete', 'backspace'
           case 's':
           case 'x':
           case 'delete':
+          case 'backspace':
             e.preventDefault();
             this.cleanDelete();
             return;
@@ -452,7 +466,11 @@
         if (stage) {
           stage.classList.add(dir === 'next' ? 'cleaning-next' : 'cleaning-prev');
         }
-        link.click();
+        if ((window as any).htmx) {
+          (window as any).htmx.trigger(link, 'click');
+        } else {
+          link.click();
+        }
       }
     }
 
@@ -463,7 +481,11 @@
         if (stage) {
           stage.classList.add('cleaning-delete');
         }
-        deleteBtn.click();
+        if ((window as any).htmx) {
+          (window as any).htmx.trigger(deleteBtn, 'click');
+        } else {
+          deleteBtn.click();
+        }
       }
     }
 
@@ -510,6 +532,7 @@
       // Special handling for Enter in primary tag inputs (search box, clean tags, viewer tags, or edit textarea)
       if (e.key === 'Enter' && (input.id === 'tags' || input.id === 'clean-tags-input' || input.id === 'viewer-tags-input' || (input.tagName === 'TEXTAREA' && input.name === 'tags'))) {
         e.preventDefault();
+        input.blur();
         const form = input.closest('form');
         if (form) {
           // Trigger the submit button if it exists to ensure HTMX/boost works
@@ -588,12 +611,20 @@
       const lastSpace = textBeforeCursor.lastIndexOf(' ');
       const start = lastSpace + 1;
       
-      const newText = text.substring(0, start) + value + ' ' + text.substring(cursorPos);
+      const isPrefixOnly = value.endsWith(':');
+      const suffix = isPrefixOnly ? '' : ' ';
+
+      const newText = text.substring(0, start) + value + suffix + text.substring(cursorPos);
       input.value = newText;
       
       // Move cursor to end of inserted tag
-      const newPos = start + value.length + 1;
+      const newPos = start + value.length + suffix.length;
       input.setSelectionRange(newPos, newPos);
+
+      // If user selected a prefix like "order:", trigger suggestions immediately for after the colon
+      if (isPrefixOnly && (window as any).htmx) {
+        (window as any).htmx.trigger(input, 'keyup');
+      }
     }
 
     private clearAutocomplete(container: Element) {

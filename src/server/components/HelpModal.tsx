@@ -50,6 +50,12 @@ export const HelpModal: FC = () => {
             </ul>
           </section>
         </div>
+        <footer style="margin-top: 20px; padding-top: 12px; border-top: 1px solid #333; display: flex; justify-content: space-between; align-items: center;">
+          <a href="/wiki_pages" style="color: #38bdf8; font-size: 13px; font-weight: bold; text-decoration: none;">
+            In-Depth Search & Query Syntax Guide →
+          </a>
+          <span style="font-size: 11px; color: #666;">Press Esc to close</span>
+        </footer>
       </div>
     </div>
   );

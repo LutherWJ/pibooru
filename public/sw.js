@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pibooru-v1';
+const CACHE_NAME = 'pibooru-v2';
 const ASSETS = [
   '/',
   '/public/css/main.css',
@@ -39,6 +39,20 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request).catch(() => {
         return caches.match('/offline') || caches.match('/');
+      })
+    );
+    return;
+  }
+
+  // Network First for client JavaScript bundle to ensure latest keybinds and features
+  if (url.pathname.startsWith('/public/dist/')) {
+    event.respondWith(
+      fetch(request).then((fetchResponse) => {
+        const cloned = fetchResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, cloned));
+        return fetchResponse;
+      }).catch(() => {
+        return caches.match(request);
       })
     );
     return;

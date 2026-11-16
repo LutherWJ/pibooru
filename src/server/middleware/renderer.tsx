@@ -23,9 +23,9 @@ export const renderer = jsxRenderer(({ children, title }: RendererProps & { chil
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{title ? `${title} - PiBooru` : "PiBooru"}</title>
         
-        <link rel="stylesheet" href="/public/css/main.css" />
+        <link rel="stylesheet" href="/public/css/main.css?v=0.5.30" />
         <script src="/public/js/htmx.min.js" defer></script>
-        <script src="/public/dist/index.js" defer></script>
+        <script src="/public/dist/index.js?v=0.5.30" defer></script>
       </head>
       <body hx-boost="true">
         <header id="top">
