@@ -53,6 +53,8 @@ bun run src/index.ts
 - **HTMX First**: Prefer HTMX partial swaps over client-side state management.
 - **Keyboard Manager**: Custom logic in `src/client` handles navigation and focus mapping.
 - **Local Assets**: All libraries (HTMX, CSS) must be served locally to ensure private network (Tailscale) compatibility.
+- **Asset & Service Worker Versioning**: When modifying client logic in `src/client/`, always rebuild assets (`bun run build`), bump the cache version in `public/sw.js` (or use Network-First for bundles), and increment asset query versions (`?v=...`) in SSR layouts to prevent browsers from executing stale service worker caches.
+- **Input Focus Management in Keyboard Views**: In keyboard-driven views (`/clean`, `/viewer`), ensure parent containers have `tabIndex={-1}` to allow click-to-blur, explicitly blur search inputs upon form submission, and clear input focus on page load so hotkeys are never inadvertently blocked by input focus trapping.
 
 ## Reference Documentation
 For deep dives, see the `docs/` directory:
