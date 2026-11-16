@@ -9,6 +9,7 @@ export interface ParsedTag {
 export interface SearchQuery {
   tags: ParsedTag[];
   rating?: PostRating;
+  ratings?: PostRating[];
   limit?: number;
   order?: string;
   type?: 'video' | 'image';
@@ -145,5 +146,28 @@ export class SearchParser {
     }
 
     return query;
+  }
+
+  /**
+   * Applies the user's default content rating filter if the query doesn't specify one.
+   */
+  static applyDefaultRating(query: SearchQuery, defaultRating?: string): void {
+    if (!defaultRating || defaultRating === "all") return;
+    if (query.rating || (query.ratings && query.ratings.length > 0)) return;
+
+    switch (defaultRating) {
+      case "s":
+        query.rating = "s";
+        break;
+      case "e":
+        query.rating = "e";
+        break;
+      case "s_q":
+        query.ratings = ["s", "q"];
+        break;
+      case "q_e":
+        query.ratings = ["q", "e"];
+        break;
+    }
   }
 }

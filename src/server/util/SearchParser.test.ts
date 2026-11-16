@@ -71,4 +71,49 @@ describe("SearchParser", () => {
     expect(query.type).toBe("video");
     expect(query.limit).toBe(20);
   });
+
+  describe("applyDefaultRating", () => {
+    it("does nothing if defaultRating is 'all' or undefined", () => {
+      const q1 = SearchParser.parse("cat");
+      SearchParser.applyDefaultRating(q1, "all");
+      expect(q1.rating).toBeUndefined();
+      expect(q1.ratings).toBeUndefined();
+
+      const q2 = SearchParser.parse("cat");
+      SearchParser.applyDefaultRating(q2, undefined);
+      expect(q2.rating).toBeUndefined();
+      expect(q2.ratings).toBeUndefined();
+    });
+
+    it("does not override an explicitly searched rating", () => {
+      const q = SearchParser.parse("cat rating:e");
+      SearchParser.applyDefaultRating(q, "s");
+      expect(q.rating).toBe("e");
+      expect(q.ratings).toBeUndefined();
+    });
+
+    it("applies 's' default rating", () => {
+      const q = SearchParser.parse("cat");
+      SearchParser.applyDefaultRating(q, "s");
+      expect(q.rating).toBe("s");
+    });
+
+    it("applies 'e' default rating", () => {
+      const q = SearchParser.parse("cat");
+      SearchParser.applyDefaultRating(q, "e");
+      expect(q.rating).toBe("e");
+    });
+
+    it("applies 's_q' default rating", () => {
+      const q = SearchParser.parse("cat");
+      SearchParser.applyDefaultRating(q, "s_q");
+      expect(q.ratings).toEqual(["s", "q"]);
+    });
+
+    it("applies 'q_e' (explicit and up) default rating", () => {
+      const q = SearchParser.parse("cat");
+      SearchParser.applyDefaultRating(q, "q_e");
+      expect(q.ratings).toEqual(["q", "e"]);
+    });
+  });
 });

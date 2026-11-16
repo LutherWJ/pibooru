@@ -88,11 +88,15 @@ export type TagImplication = z.infer<typeof TagImplicationSchema>;
 
 // --- Users (Future-proofing) ---
 
+export const ContentRatingFilterSchema = z.enum(['all', 's', 's_q', 'q_e', 'e']);
+export type ContentRatingFilter = z.infer<typeof ContentRatingFilterSchema>;
+
 export const UserSchema = z.object({
   id: z.number().int().positive(),
   username: z.string().min(3).max(32),
   password_hash: z.string().min(1),
   api_key: z.string().nullable().optional(),
+  default_rating: ContentRatingFilterSchema.default('all').optional(),
   created_at: z.string(),
 });
 

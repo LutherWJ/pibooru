@@ -35,11 +35,60 @@ export const ApiKeyFragment: FC<{ apiKey: string }> = ({ apiKey }) => {
   );
 };
 
+export const ContentFilterFragment: FC<{ defaultRating: string; message?: string }> = ({ defaultRating, message }) => {
+  return (
+    <div id="content-filter-container">
+      <form 
+        hx-post="/settings/content-filter" 
+        hx-target="#content-filter-container" 
+        hx-swap="outerHTML" 
+        style="display: flex; flex-direction: column; gap: 1rem; max-width: 500px;"
+      >
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <label for="default-rating-select" style="font-weight: bold; font-size: 14px;">Default Content Rating Level</label>
+          <select 
+            id="default-rating-select" 
+            name="default_rating"
+            style="background: #000; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 10px 12px; font-size: 15px; min-height: 44px; width: 100%; box-sizing: border-box;"
+          >
+            <option value="all" selected={defaultRating === 'all'}>Show Everything (Safe, Questionable, Explicit)</option>
+            <option value="s" selected={defaultRating === 's'}>Safe / General Audience Only (Hide Questionable & Explicit)</option>
+            <option value="s_q" selected={defaultRating === 's_q'}>Safe & Questionable (Hide Explicit)</option>
+            <option value="q_e" selected={defaultRating === 'q_e'}>Questionable & Explicit (Show Explicit and up)</option>
+            <option value="e" selected={defaultRating === 'e'}>Explicit Only (Adult content only)</option>
+          </select>
+        </div>
+        <button 
+          type="submit" 
+          class="button" 
+          style="background: #2563eb; color: white; border: none; padding: 0.75rem 1.25rem; border-radius: 4px; cursor: pointer; min-height: 44px; font-weight: bold; font-size: 14px; align-self: flex-start;"
+        >
+          Save Preference
+        </button>
+        {message && (
+          <div style="color: #4ade80; font-size: 0.95rem; font-weight: bold;">
+            ✓ {message}
+          </div>
+        )}
+      </form>
+    </div>
+  );
+};
+
 export const Settings: FC<{ user: User; apiKey: string | null }> = ({ user, apiKey }) => {
   return (
     <div class="settings-page" style={PAGE_CONTAINER_STYLE}>
       <h1>Settings</h1>
       
+      <section style={CARD_SECTION_STYLE}>
+        <h2>Content Preferences</h2>
+        <p style="color: #a0a0a0; margin-bottom: 1.5rem;">
+          Choose which content rating level is displayed by default across the gallery, clean mode, and viewer when no specific rating is searched.
+        </p>
+        
+        <ContentFilterFragment defaultRating={user.default_rating || "all"} />
+      </section>
+
       <section style={CARD_SECTION_STYLE}>
         <h2>API Access</h2>
         <p style="color: #a0a0a0; margin-bottom: 1.5rem;">

@@ -42,6 +42,13 @@ postRouter.post(
     PostController.updateTags
 );
 
+postRouter.post(
+    "/post/:id/rating",
+    zValidator("param", z.object({ id: z.string().transform((v) => parseInt(v, 10)) })),
+    zValidator("form", z.object({ rating: z.enum(['s', 'q', 'e']) })),
+    PostController.updateRating
+);
+
 postRouter.delete(
     "/post/:id",
     zValidator("param", z.object({ id: z.string().transform((v) => parseInt(v, 10)) })),

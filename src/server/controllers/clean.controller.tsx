@@ -8,6 +8,7 @@ export class CleanController {
   static async showClean(c: Context<AppEnv>) {
     const { tags: tagsParam, page: pageStr } = c.req.valid("query" as never) as { tags: string; page: string };
     const query = SearchParser.parse(tagsParam);
+    SearchParser.applyDefaultRating(query, c.var.user?.default_rating);
     const isRandom = query.order === "random";
 
     let offset = 0;
@@ -22,7 +23,9 @@ export class CleanController {
       }
     }
 
-    const totalCount = PostModel.count(SearchParser.parse(tagsParam));
+    const countQuery = SearchParser.parse(tagsParam);
+    SearchParser.applyDefaultRating(countQuery, c.var.user?.default_rating);
+    const totalCount = PostModel.count(countQuery);
     const posts = PostModel.search(query, 1, offset);
     const post = posts[0] || null;
 

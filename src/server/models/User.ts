@@ -56,6 +56,13 @@ export class UserModel {
   }
 
   /**
+   * Updates a user's default content rating filter preference.
+   */
+  static updateDefaultRating(userId: number, rating: string): void {
+    db.prepare("UPDATE users SET default_rating = ? WHERE id = ?").run(rating, userId);
+  }
+
+  /**
    * Verifies a user's password.
    */
   static async verifyPassword(username: string, password: string): Promise<User | null> {

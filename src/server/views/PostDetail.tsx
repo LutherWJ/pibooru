@@ -97,7 +97,25 @@ export const PostDetail: FC<PostDetailProps> = ({
           <ul style="list-style: none; padding: 0; margin: 0; font-size: 12px; line-height: 1.8;">
             <li><strong>ID:</strong> {post.id}</li>
             <li><strong>Date:</strong> {new Date(post.created_at).toLocaleDateString()}</li>
-            <li><strong>Rating:</strong> <span class="uppercase">{post.rating}</span></li>
+            <li id="rating-container" style="display: flex; align-items: center; gap: 8px;">
+              <strong>Rating:</strong>
+              <form action={`/post/${post.id}/rating`} method="post" style="display: inline-flex; align-items: center; margin: 0;">
+                <select 
+                  name="rating" 
+                  class="rating-select"
+                  hx-post={`/post/${post.id}/rating`} 
+                  hx-target="#rating-container" 
+                  hx-swap="outerHTML"
+                  hx-trigger="change"
+                  style="background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 4px 8px; font-size: 13px; cursor: pointer; min-height: 32px;"
+                  title="Change content rating"
+                >
+                  <option value="s" selected={post.rating === 's'}>Safe (General)</option>
+                  <option value="q" selected={post.rating === 'q'}>Questionable</option>
+                  <option value="e" selected={post.rating === 'e'}>Explicit</option>
+                </select>
+              </form>
+            </li>
             <li><strong>Size:</strong> {(post.size_bytes / 1024 / 1024).toFixed(2)} MB</li>
             {post.width && (
               <li><strong>Dimensions:</strong> {post.width} x {post.height}</li>

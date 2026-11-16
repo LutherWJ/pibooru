@@ -1,5 +1,5 @@
 import { db } from "../db";
-import type { Post, CreatePost, Tag } from "../db/schema";
+import type { Post, CreatePost, Tag, PostRating } from "../db/schema";
 import { TagModel } from "./Tag";
 import type { SearchQuery } from "../util/SearchParser";
 import { unlink } from "node:fs/promises";
@@ -18,7 +18,11 @@ export class PostModel {
     const conditions: string[] = [];
     const params: any[] = [];
 
-    if (query.rating) {
+    if (query.ratings && query.ratings.length > 0) {
+      const placeholders = query.ratings.map(() => "?").join(", ");
+      conditions.push(`rating IN (${placeholders})`);
+      params.push(...query.ratings);
+    } else if (query.rating) {
       conditions.push("rating = ?");
       params.push(query.rating);
     }
@@ -256,6 +260,13 @@ export class PostModel {
 
       return postId;
     })();
+  }
+
+  /**
+   * Updates the content rating for a post.
+   */
+  static updateRating(postId: number, rating: PostRating): void {
+    db.prepare("UPDATE posts SET rating = ? WHERE id = ?").run(rating, postId);
   }
 
   /**

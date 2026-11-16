@@ -3,6 +3,7 @@ import { SearchParser } from "../util/SearchParser";
 import { PostModel } from "../models/Post";
 import { Home } from "../views/Home";
 import { PostDetail } from "../views/PostDetail";
+import type { PostRating } from "../db/schema";
 import type { AppEnv } from "../types";
 
 export class PostController {
@@ -11,6 +12,7 @@ export class PostController {
         const limit = 50;
         let offset = 0;
         const query = SearchParser.parse(tagsParam);
+        SearchParser.applyDefaultRating(query, c.var.user?.default_rating);
 
         // Hybrid pagination handling
         let pageNum = 1;
@@ -62,7 +64,8 @@ export class PostController {
         }
 
         const tags = PostModel.getTags(id);
-        const searchQuery = tagsParam ? SearchParser.parse(tagsParam) : undefined;
+        const searchQuery = tagsParam ? SearchParser.parse(tagsParam) : { tags: [] };
+        SearchParser.applyDefaultRating(searchQuery, c.var.user?.default_rating);
         const { prevId, nextId } = PostModel.getAdjacentPostIds(id, searchQuery);
 
         return c.render(
@@ -77,6 +80,36 @@ export class PostController {
                 title: `Post ${id}`,
             }
         );
+    }
+
+    static async updateRating(c: Context<AppEnv>) {
+        const { id } = c.req.valid("param" as never) as { id: number };
+        const { rating } = c.req.valid("form" as never) as { rating: PostRating };
+        PostModel.updateRating(id, rating);
+
+        if (c.req.header('hx-request')) {
+            return c.html(
+                <li id="rating-container" style="display: flex; align-items: center; gap: 8px;">
+                    <strong>Rating:</strong>
+                    <form action={`/post/${id}/rating`} method="post" style="display: inline-flex; align-items: center; margin: 0;">
+                        <select 
+                            name="rating" 
+                            class="rating-select"
+                            hx-post={`/post/${id}/rating`} 
+                            hx-target="#rating-container" 
+                            hx-swap="outerHTML"
+                            hx-trigger="change"
+                        >
+                            <option value="s" selected={rating === 's'}>Safe (General)</option>
+                            <option value="q" selected={rating === 'q'}>Questionable</option>
+                            <option value="e" selected={rating === 'e'}>Explicit</option>
+                        </select>
+                    </form>
+                    <span style="color: #4ade80; font-size: 11px; font-weight: bold;">Saved!</span>
+                </li>
+            );
+        }
+        return c.redirect(`/post/${id}`);
     }
 
     static async updateTags(c: Context<AppEnv>) {

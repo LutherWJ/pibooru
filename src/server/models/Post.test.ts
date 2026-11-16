@@ -171,4 +171,25 @@ describe("PostModel Search", () => {
       expect(adjAnimal1.prevId).toBeNull();
       expect(adjAnimal1.nextId).toBe(ids[0]!);
   });
+
+  it("updates post content rating", () => {
+      const allPosts = db.query("SELECT id, rating FROM posts ORDER BY id ASC").all() as { id: number; rating: string }[];
+      const targetId = allPosts[0]!.id;
+      
+      PostModel.updateRating(targetId, "e");
+      let updated = PostModel.getById(targetId);
+      expect(updated?.rating).toBe("e");
+
+      PostModel.updateRating(targetId, "s");
+      updated = PostModel.getById(targetId);
+      expect(updated?.rating).toBe("s");
+  });
+
+  it("filters by multiple ratings using query.ratings", () => {
+      const query = SearchParser.parse("");
+      query.ratings = ["q", "e"];
+      const results = PostModel.search(query);
+      expect(results.length).toBe(2);
+      expect(results.every(r => r.rating === "q" || r.rating === "e")).toBe(true);
+  });
 });
