@@ -79,8 +79,12 @@ export const Upload: FC = () => {
                 name="tags" 
                 placeholder="artist:picasso character:mona_lisa general:smile"
                 style={TEXTAREA_STYLE}
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck={false}
                 hx-get="/partials/tags/suggestions"
-                hx-trigger="keyup changed delay:100ms"
+                hx-trigger="input changed delay:100ms, keyup changed delay:100ms"
                 hx-target="#suggestions-container"
               ></textarea>
               <div id="suggestions-container" style={POPUP_CONTAINER_STYLE}></div>
@@ -89,7 +93,8 @@ export const Upload: FC = () => {
             <button 
               type="submit" 
               id="upload-button"
-              style={SUBMIT_BTN_STYLE}
+              class="button"
+              style={`${SUBMIT_BTN_STYLE} width: 100%; min-height: 48px; border-radius: 4px; font-size: 15px;`}
             >
               Upload
             </button>

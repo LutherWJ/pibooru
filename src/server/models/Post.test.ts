@@ -140,4 +140,35 @@ describe("PostModel Search", () => {
       const results = PostModel.search(query);
       expect(results.length).toBe(0);
   });
+
+  it("retrieves adjacent post IDs correctly", () => {
+      const allPosts = db.query("SELECT id FROM posts ORDER BY id ASC").all() as { id: number }[];
+      const ids = allPosts.map(p => p.id);
+      expect(ids.length).toBe(4);
+
+      // For middle post: prev is newer (higher ID), next is older (lower ID)
+      const adj1 = PostModel.getAdjacentPostIds(ids[1]!);
+      expect(adj1.prevId).toBe(ids[2]!);
+      expect(adj1.nextId).toBe(ids[0]!);
+
+      // Oldest post
+      const adjOldest = PostModel.getAdjacentPostIds(ids[0]!);
+      expect(adjOldest.prevId).toBe(ids[1]!);
+      expect(adjOldest.nextId).toBeNull();
+
+      // Newest post
+      const adjNewest = PostModel.getAdjacentPostIds(ids[3]!);
+      expect(adjNewest.prevId).toBeNull();
+      expect(adjNewest.nextId).toBe(ids[2]!);
+
+      // With tag query: "animal" is on post 0 and post 1
+      const query = SearchParser.parse("animal");
+      const adjAnimal0 = PostModel.getAdjacentPostIds(ids[0]!, query);
+      expect(adjAnimal0.prevId).toBe(ids[1]!);
+      expect(adjAnimal0.nextId).toBeNull();
+
+      const adjAnimal1 = PostModel.getAdjacentPostIds(ids[1]!, query);
+      expect(adjAnimal1.prevId).toBeNull();
+      expect(adjAnimal1.nextId).toBe(ids[0]!);
+  });
 });

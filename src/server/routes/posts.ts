@@ -26,6 +26,12 @@ postRouter.get(
             id: z.string().transform((v) => parseInt(v, 10)),
         })
     ),
+    zValidator(
+        "query",
+        z.object({
+            tags: z.string().optional().default(""),
+        })
+    ),
     PostController.showPost
 );
 

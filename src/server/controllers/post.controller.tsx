@@ -53,6 +53,8 @@ export class PostController {
 
     static async showPost(c: Context<AppEnv>) {
         const { id } = c.req.valid("param" as never) as { id: number };
+        const queryParams = c.req.valid("query" as never) as { tags?: string } | undefined;
+        const tagsParam = queryParams?.tags || "";
         const post = PostModel.getById(id);
 
         if (!post) {
@@ -60,9 +62,21 @@ export class PostController {
         }
 
         const tags = PostModel.getTags(id);
-        return c.render(<PostDetail post={post} tags={tags} />, {
-            title: `Post ${id}`,
-        });
+        const searchQuery = tagsParam ? SearchParser.parse(tagsParam) : undefined;
+        const { prevId, nextId } = PostModel.getAdjacentPostIds(id, searchQuery);
+
+        return c.render(
+            <PostDetail 
+                post={post} 
+                tags={tags} 
+                prevPostId={prevId} 
+                nextPostId={nextId} 
+                searchQuery={tagsParam} 
+            />, 
+            {
+                title: `Post ${id}`,
+            }
+        );
     }
 
     static async updateTags(c: Context<AppEnv>) {

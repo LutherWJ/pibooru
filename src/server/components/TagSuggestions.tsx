@@ -33,24 +33,24 @@ export const TagSuggestions: FC<TagSuggestionsProps> = ({ tags, suggestions }) =
   if (items.length === 0) return null;
 
   return (
-    <ul style="list-style: none; padding: 0; margin: 0; border: 1px solid #444; border-top: none;">
+    <ul class="suggestions-list" style="list-style: none; padding: 0; margin: 0; border: 1px solid #444; border-top: none; user-select: none; -webkit-user-select: none;">
       {items.map((item, idx) => {
         return (
           <li 
             key={item.id ?? `item-${idx}`}
             class="suggestion-item"
             data-tag-value={item.value}
-            style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; cursor: pointer; background: #222; border-bottom: 1px solid #2d2d2d;"
+            style="display: flex; justify-content: space-between; align-items: center; min-height: 44px; padding: 10px 14px; cursor: pointer; background: #222; border-bottom: 1px solid #2d2d2d; touch-action: manipulation; box-sizing: border-box;"
           >
             <div style="display: flex; align-items: center; gap: 8px;">
-              <span class={item.isModifier ? "tag-type-meta" : `tag-type-${item.namespace || 'general'}`} style="font-weight: bold;">
+              <span class={item.isModifier ? "tag-type-meta" : `tag-type-${item.namespace || 'general'}`} style="font-weight: bold; font-size: 13px;">
                 {item.name.replace(/_/g, ' ')}
               </span>
-              <span style={`font-size: 10px; text-transform: uppercase; border-radius: 3px; padding: 1px 4px; ${item.isModifier ? 'color: #38bdf8; background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 600;' : 'color: #888; background: #1a1a1a;'}`}>
+              <span style={`font-size: 10px; text-transform: uppercase; border-radius: 3px; padding: 2px 6px; ${item.isModifier ? 'color: #38bdf8; background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 600;' : 'color: #888; background: #1a1a1a;'}`}>
                 {item.namespace || (item.isModifier ? 'modifier' : 'tag')}
               </span>
             </div>
-            <span style="font-size: 11px; color: #9ca3af; margin-left: auto;">
+            <span style="font-size: 12px; color: #9ca3af; margin-left: auto;">
               {item.isModifier ? (
                 <span style="font-style: italic; color: #cbd5e1;">{item.description}</span>
               ) : (

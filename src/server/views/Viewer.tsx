@@ -227,8 +227,11 @@ export const Viewer: FC<ViewerProps> = ({ post, tags, nextUrl, prevUrl }) => {
             value={tags}
             id="viewer-tags-input"
             autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck={false}
             hx-get="/partials/tags/suggestions"
-            hx-trigger="keyup changed delay:100ms"
+            hx-trigger="input changed delay:100ms, keyup changed delay:100ms"
             hx-target="#viewer-suggestions-container"
           />
           <div id="viewer-suggestions-container" style="position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); width: 100%; max-width: 600px; background: #222; z-index: 110;"></div>
@@ -253,11 +256,17 @@ export const ViewerPage: FC<ViewerPageProps> = (props) => {
     <html lang="en">
       <head>
         <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
         <title>Viewer - PiBooru</title>
-        <link rel="stylesheet" href="/public/css/main.css?v=0.5.30" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#000000" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="apple-touch-icon" href="/public/icons/icon-192.svg" />
+        <link rel="stylesheet" href="/public/css/main.css?v=0.6.0" />
         <script src="/public/js/htmx.min.js" defer></script>
-        <script src="/public/dist/index.js?v=0.5.30" defer></script>
+        <script src="/public/dist/index.js?v=0.6.0" defer></script>
       </head>
       <body hx-boost="true" style="margin: 0; padding: 0; background: #000; overflow: hidden;">
         <Viewer {...props} />

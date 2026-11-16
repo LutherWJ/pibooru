@@ -160,6 +160,34 @@ export class PostModel {
   }
 
   /**
+   * Retrieves adjacent post IDs (prev: newer, next: older) relative to a given post.
+   */
+  static getAdjacentPostIds(id: number, query?: SearchQuery): { prevId: number | null; nextId: number | null } {
+    const defaultQuery: SearchQuery = query || { tags: [] };
+
+    // Newer post (prev in feed)
+    const prevCond = this.buildConditions(defaultQuery);
+    prevCond.conditions.push("id > ?");
+    prevCond.params.push(id);
+    const prevWhere = prevCond.conditions.length > 0 ? `WHERE ${prevCond.conditions.join(" AND ")}` : "";
+    const prevSql = `SELECT id FROM posts ${prevWhere} ORDER BY id ASC LIMIT 1`;
+    const prevRow = db.query(prevSql).get(...prevCond.params) as { id: number } | null;
+
+    // Older post (next in feed)
+    const nextCond = this.buildConditions(defaultQuery);
+    nextCond.conditions.push("id < ?");
+    nextCond.params.push(id);
+    const nextWhere = nextCond.conditions.length > 0 ? `WHERE ${nextCond.conditions.join(" AND ")}` : "";
+    const nextSql = `SELECT id FROM posts ${nextWhere} ORDER BY id DESC LIMIT 1`;
+    const nextRow = db.query(nextSql).get(...nextCond.params) as { id: number } | null;
+
+    return {
+      prevId: prevRow ? prevRow.id : null,
+      nextId: nextRow ? nextRow.id : null,
+    };
+  }
+
+  /**
    * Counts total posts matching a SearchQuery.
    */
   static count(query: SearchQuery): number {

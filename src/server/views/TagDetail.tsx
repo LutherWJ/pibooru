@@ -2,11 +2,11 @@ import type { FC } from 'hono/jsx';
 import type { Post, Tag } from '../db/schema';
 import { PostThumbnail } from '../components/PostThumbnail';
 
-const ADMIN_BOX_STYLE = "background: #111; padding: 15px; border: 1px solid #333;";
-const INPUT_STYLE = "background: #000; color: #fff; border: 1px solid #444; padding: 5px; width: 120px;";
-const ADD_BTN_STYLE = "background: #3b82f6; color: #fff; border: none; padding: 5px 10px; cursor: pointer;";
-const DEL_BTN_STYLE = "background: #ef4444; color: white; border: none; padding: 2px 5px; cursor: pointer; font-size: 10px;";
-const LIST_ITEM_STYLE = "display: flex; justify-content: space-between; margin-bottom: 5px;";
+const ADMIN_BOX_STYLE = "background: #111; padding: 15px; border: 1px solid #333; border-radius: 6px;";
+const INPUT_STYLE = "background: #000; color: #fff; border: 1px solid #444; padding: 8px 12px; width: 140px; border-radius: 4px; min-height: 40px; box-sizing: border-box; font-size: 14px;";
+const ADD_BTN_STYLE = "background: #2563eb; color: #fff; border: none; padding: 8px 16px; cursor: pointer; border-radius: 4px; min-height: 40px; font-weight: bold; font-size: 13px;";
+const DEL_BTN_STYLE = "background: #ef4444; color: white; border: none; padding: 6px 12px; cursor: pointer; font-size: 12px; border-radius: 4px; min-height: 34px;";
+const LIST_ITEM_STYLE = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; min-height: 36px;";
 
 interface TagDetailProps {
   tag: Tag;
@@ -44,7 +44,7 @@ export const TagDetail: FC<TagDetailProps> = ({ tag, aliases, implications, post
       <section id="content">
         <h1>Tag: {tag.name.replace(/_/g, ' ')}</h1>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px;">
           {/* Aliases Section */}
           <section class="admin-box" style={ADMIN_BOX_STYLE}>
             <h3>Aliases</h3>

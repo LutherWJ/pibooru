@@ -9,6 +9,7 @@
     private autocompleteIndex: number = -1;
     private gridSelector: string = '#post-grid';
     private itemSelector: string = '[data-post-id]';
+    private isSelectingSuggestion: boolean = false;
 
     constructor() {
       this.init();
@@ -17,6 +18,10 @@
     private init() {
       // Use delegation for all events to be HTMX-friendly
       document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+      
+      // Pointerdown for instantaneous, blur-free suggestion selection
+      document.addEventListener('pointerdown', (e) => this.handleSuggestionPointerDown(e));
+
       document.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
 
@@ -57,8 +62,9 @@
       // Critical for Back button / History restoration
       document.addEventListener('htmx:beforeHistorySave', () => {
         this.cleanupMedia();
-        // Force hide help modal before saving history to avoid ghosting
+        // Force hide help modal and lightbox before saving history to avoid ghosting
         this.hideHelp();
+        this.hideLightbox();
       });
       document.addEventListener('htmx:historyRestore', () => {
         this.cleanupMedia();
@@ -67,12 +73,15 @@
       });
       window.addEventListener('popstate', () => this.cleanupMedia());
 
-      // Touch / Swipe Gestures for Clean Mode & Slideshow
+      // Touch / Swipe Gestures for Clean Mode, Slideshow, and Post Detail
       let touchStartX = 0;
       let touchStartY = 0;
 
       document.addEventListener('touchstart', (e) => {
-        if (!window.location.pathname.startsWith('/clean') && !window.location.pathname.startsWith('/viewer')) return;
+        const isSupportedPage = window.location.pathname.startsWith('/clean') ||
+                                window.location.pathname.startsWith('/viewer') ||
+                                window.location.pathname.startsWith('/post/');
+        if (!isSupportedPage) return;
         const target = e.target as HTMLElement;
         if (target && typeof target.closest === 'function' && target.closest('input, textarea, button, a')) return;
         if (e.touches && e.touches[0]) {
@@ -82,12 +91,18 @@
       }, { passive: true });
 
       document.addEventListener('touchend', (e) => {
-        if (!window.location.pathname.startsWith('/clean') && !window.location.pathname.startsWith('/viewer')) return;
+        const isSupportedPage = window.location.pathname.startsWith('/clean') ||
+                                window.location.pathname.startsWith('/viewer') ||
+                                window.location.pathname.startsWith('/post/');
+        if (!isSupportedPage) return;
         const target = e.target as HTMLElement;
         if (target && typeof target.closest === 'function' && target.closest('input, textarea, button, a')) return;
         if (e.changedTouches && e.changedTouches[0]) {
           const deltaX = e.changedTouches[0].clientX - touchStartX;
           const deltaY = e.changedTouches[0].clientY - touchStartY;
+
+          const lightbox = document.getElementById('lightbox-modal');
+          const isLightboxOpen = lightbox && (lightbox.style.display === 'flex' || window.getComputedStyle(lightbox).display === 'flex');
 
           // Horizontal swipe: left = next, right = prev
           if (Math.abs(deltaX) > 50 && Math.abs(deltaY) < 100) {
@@ -103,13 +118,26 @@
               } else {
                 this.navigatePage('prev');
               }
+            } else if (window.location.pathname.startsWith('/post/')) {
+              if (deltaX < 0) {
+                this.navigatePage('next');
+              } else {
+                this.navigatePage('prev');
+              }
             }
             return;
           }
 
-          // Vertical swipe down: delete in clean mode!
+          // Vertical swipe down:
+          // In clean mode -> delete!
           if (window.location.pathname.startsWith('/clean') && deltaY > 80 && Math.abs(deltaX) < 100) {
             this.cleanDelete();
+            return;
+          }
+
+          // In lightbox -> close lightbox!
+          if (isLightboxOpen && deltaY > 80 && Math.abs(deltaX) < 100) {
+            this.hideLightbox();
             return;
           }
 
@@ -149,10 +177,41 @@
       const target = e.target as HTMLElement;
       if (!target || typeof target.closest !== 'function') return;
 
-      // Intercept Back to Gallery button
-      if (target.id === 'back-to-search' || target.closest('#back-to-search')) {
+      // Intercept Back to Gallery or Mobile Back button
+      if (target.id === 'back-to-search' || target.closest('#back-to-search') ||
+          target.id === 'mobile-back-btn' || target.closest('#mobile-back-btn')) {
         e.preventDefault();
         this.goBack();
+        return;
+      }
+
+      // Mobile search drawer toggle
+      if (target.id === 'mobile-search-toggle' || target.closest('#mobile-search-toggle')) {
+        e.preventDefault();
+        const drawer = document.getElementById('mobile-search-drawer');
+        if (drawer) {
+          const isOpen = drawer.classList.toggle('open');
+          if (isOpen) {
+            const inp = drawer.querySelector('input') as HTMLInputElement;
+            if (inp) inp.focus();
+          }
+        }
+        return;
+      }
+
+      // Open Lightbox on click of post image, mobile fullscreen button, or options link
+      if (target.id === 'open-lightbox-btn' || target.closest('#open-lightbox-btn') ||
+          target.id === 'mobile-fullscreen-trigger' || target.closest('#mobile-fullscreen-trigger') ||
+          target.id === 'post-media-element' || target.closest('#post-media-element')) {
+        e.preventDefault();
+        this.showLightbox();
+        return;
+      }
+
+      // Close Lightbox
+      if (target.id === 'lightbox-close-btn' || target.closest('#lightbox-close-btn') ||
+          target.id === 'lightbox-modal' || target.id === 'lightbox-content-area') {
+        this.hideLightbox();
         return;
       }
 
@@ -162,6 +221,22 @@
       }
       if (target.id === 'help-modal' || (target.classList && target.classList.contains('close-modal'))) {
         this.hideHelp();
+      }
+    }
+
+    private showLightbox() {
+      const modal = document.getElementById('lightbox-modal');
+      if (modal) {
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+      }
+    }
+
+    private hideLightbox() {
+      const modal = document.getElementById('lightbox-modal');
+      if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
       }
     }
 
@@ -224,6 +299,7 @@
     }
 
     private cleanupMedia() {
+      this.hideLightbox();
       // Find all media elements, even those not currently in the visible DOM but potentially leaked
       const mediaElements = document.querySelectorAll('video, audio');
       mediaElements.forEach((el) => {
@@ -248,11 +324,11 @@
       }
 
       // If focusing a tag search input, trigger suggestions if there's content
-      if (target.tagName === 'INPUT' && target.id === 'tags') {
+      if (target.tagName === 'INPUT' && (target.id === 'tags' || target.id === 'mobile-tags-input')) {
         const input = target as HTMLInputElement;
         if (input.value.length > 0) {
-          // Manually trigger HTMX keyup to show suggestions
-          (window as any).htmx.trigger(input, 'keyup');
+          // Manually trigger HTMX input to show suggestions
+          (window as any).htmx.trigger(input, 'input');
         }
       }
     }
@@ -270,10 +346,19 @@
 
       // Escape key hierarchy
       if (key === 'escape') {
+        // 1. Lightbox Modal
+        const lightbox = document.getElementById('lightbox-modal');
+        const lightboxIsVisible = lightbox && (lightbox.style.display === 'flex' || window.getComputedStyle(lightbox).display === 'flex');
+        if (lightboxIsVisible) {
+          this.hideLightbox();
+          e.preventDefault();
+          return;
+        }
+
         const modal = document.getElementById('help-modal');
         const modalIsVisible = modal && (modal.style.display === 'flex' || window.getComputedStyle(modal).display === 'flex');
         
-        // 1. Help Modal
+        // 2. Help Modal
         if (modalIsVisible) {
           this.hideHelp();
           e.preventDefault();
@@ -552,13 +637,38 @@
       }
     }
 
-    private handleMouseClick(e: MouseEvent) {
+    private handleSuggestionPointerDown(e: PointerEvent | MouseEvent) {
       const target = e.target as HTMLElement;
       if (!target || typeof target.closest !== 'function') return;
       const suggestionItem = target.closest('.suggestion-item') as HTMLElement;
       
       if (suggestionItem) {
-        const container = suggestionItem.closest('#suggestions-container, #edit-suggestions-container, #header-suggestions, #clean-suggestions-container, #viewer-suggestions-container');
+        // Prevent input from losing focus / triggering focusout
+        e.preventDefault();
+        this.isSelectingSuggestion = true;
+        const container = suggestionItem.closest('#suggestions-container, #edit-suggestions-container, #header-suggestions, #clean-suggestions-container, #viewer-suggestions-container, #mobile-suggestions-container');
+        if (container) {
+          const input = container.parentElement?.querySelector('input, textarea') as HTMLInputElement | HTMLTextAreaElement;
+          if (input) {
+            this.applySuggestion(input, suggestionItem);
+            this.clearAutocomplete(container);
+            input.focus();
+          }
+        }
+        setTimeout(() => {
+          this.isSelectingSuggestion = false;
+        }, 300);
+      }
+    }
+
+    private handleMouseClick(e: MouseEvent) {
+      if (this.isSelectingSuggestion) return;
+      const target = e.target as HTMLElement;
+      if (!target || typeof target.closest !== 'function') return;
+      const suggestionItem = target.closest('.suggestion-item') as HTMLElement;
+      
+      if (suggestionItem) {
+        const container = suggestionItem.closest('#suggestions-container, #edit-suggestions-container, #header-suggestions, #clean-suggestions-container, #viewer-suggestions-container, #mobile-suggestions-container');
         if (container) {
           const input = container.parentElement?.querySelector('input, textarea') as HTMLInputElement | HTMLTextAreaElement;
           if (input) {
@@ -573,18 +683,20 @@
     }
 
     private handleFocusOut(e: FocusEvent) {
+      if (this.isSelectingSuggestion) return;
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
         // Short delay to allow clicks on suggestions to process first
         setTimeout(() => {
-          const suggestionsContainer = target.parentElement?.querySelector('#suggestions-container, #edit-suggestions-container, #header-suggestions, #clean-suggestions-container, #viewer-suggestions-container');
+          if (this.isSelectingSuggestion) return;
+          const suggestionsContainer = target.parentElement?.querySelector('#suggestions-container, #edit-suggestions-container, #header-suggestions, #clean-suggestions-container, #viewer-suggestions-container, #mobile-suggestions-container');
           if (suggestionsContainer) {
             // Only clear if the focus didn't move to something inside the suggestions
             if (!suggestionsContainer.contains(document.activeElement)) {
               this.clearAutocomplete(suggestionsContainer);
             }
           }
-        }, 200);
+        }, 250);
       }
     }
 
@@ -604,17 +716,22 @@
       if (!value) return;
 
       const text = input.value;
-      const cursorPos = input.selectionStart || 0;
+      const cursorPos = input.selectionStart ?? text.length;
       
       // Find the start of the current word
       const textBeforeCursor = text.substring(0, cursorPos);
       const lastSpace = textBeforeCursor.lastIndexOf(' ');
       const start = lastSpace + 1;
       
+      // Find the end of the current word
+      const textAfterCursor = text.substring(cursorPos);
+      const firstSpaceAfter = textAfterCursor.indexOf(' ');
+      const end = firstSpaceAfter === -1 ? text.length : cursorPos + firstSpaceAfter;
+
       const isPrefixOnly = value.endsWith(':');
       const suffix = isPrefixOnly ? '' : ' ';
 
-      const newText = text.substring(0, start) + value + suffix + text.substring(cursorPos);
+      const newText = text.substring(0, start) + value + suffix + text.substring(end);
       input.value = newText;
       
       // Move cursor to end of inserted tag
@@ -622,8 +739,8 @@
       input.setSelectionRange(newPos, newPos);
 
       // If user selected a prefix like "order:", trigger suggestions immediately for after the colon
-      if (isPrefixOnly && (window as any).htmx) {
-        (window as any).htmx.trigger(input, 'keyup');
+      if ((window as any).htmx) {
+        (window as any).htmx.trigger(input, 'input');
       }
     }
 

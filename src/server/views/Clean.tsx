@@ -306,13 +306,16 @@ export const CleanStage: FC<CleanProps> = ({
             placeholder="Filter tags... (Press / to search)"
             value={tags}
             autocomplete="off"
-            style="width: 100%; background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 6px 10px; border-radius: 4px; font-size: 12px;"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck={false}
+            style="width: 100%; background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 6px 10px; border-radius: 4px; font-size: 14px;"
             hx-get="/partials/tags/suggestions"
-            hx-trigger="keyup changed delay:100ms"
+            hx-trigger="input changed delay:100ms, keyup changed delay:100ms"
             hx-target="#clean-suggestions-container"
           />
           <div id="clean-suggestions-container" style="position: absolute; top: 100%; left: 0; width: 100%; background: #222; border: 1px solid #444; border-radius: 4px; z-index: 120; max-height: 250px; overflow-y: auto;"></div>
-          <button type="submit" class="clean-btn btn-prev" style="padding: 6px 12px; font-size: 12px;">Filter</button>
+          <button type="submit" class="clean-btn btn-prev" style="padding: 6px 12px; font-size: 13px; min-height: 40px;">Filter</button>
         </form>
 
         <div style="display: flex; align-items: center; gap: 12px;" class="clean-topbar-right">
@@ -322,10 +325,9 @@ export const CleanStage: FC<CleanProps> = ({
           {post && (
             <a 
               href={`/post/${post.id}`} 
-              target="_blank" 
               class="clean-btn btn-prev" 
-              style="padding: 4px 8px; font-size: 11px;"
-              title="Open full post details in new tab"
+              style="padding: 6px 10px; font-size: 12px; min-height: 36px; display: inline-flex; align-items: center;"
+              title="Open full post details"
             >
               Details ↗
             </a>

@@ -72,16 +72,19 @@ export const Home: FC<HomeProps> = ({
               value={searchQuery || ""}
               id="tags"
               autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck={false}
               hx-get="/partials/tags/suggestions"
-              hx-trigger="keyup changed delay:100ms"
+              hx-trigger="input changed delay:100ms, keyup changed delay:100ms"
               hx-target="#suggestions-container"
             />
             <div id="suggestions-container"></div>
             <button type="submit" style="display:none">Go</button>
           </form>
           <div style={SEARCH_ACTIONS_STYLE}>
-            <a href={`/viewer?tags=${searchQuery || ""}`} class="button" style={SEARCH_BTN_STYLE}>Slideshow</a>
-            <a href={`/clean?tags=${searchQuery || ""}`} class="button" style={SEARCH_BTN_STYLE}>Clean</a>
+            <a href={`/viewer?tags=${encodeURIComponent(searchQuery || "")}`} class="button" style={SEARCH_BTN_STYLE}>Slideshow</a>
+            <a href={`/clean?tags=${encodeURIComponent(searchQuery || "")}`} class="button" style={SEARCH_BTN_STYLE}>Clean</a>
           </div>
         </section>
 

@@ -1,8 +1,8 @@
 import type { FC } from 'hono/jsx';
 import type { Tag } from '../db/schema';
 
-const INPUT_STYLE = "width: 100%; background: #000; color: #fff; padding: 5px; border: 1px solid #333; margin-bottom: 10px;";
-const SUBMIT_BTN_STYLE = "width: 100%; background: #3b82f6; color: #fff; font-weight: bold; padding: 5px; border: none; cursor: pointer;";
+const INPUT_STYLE = "width: 100%; background: #000; color: #fff; padding: 8px 12px; border: 1px solid #333; margin-bottom: 10px; border-radius: 4px; min-height: 44px; box-sizing: border-box; font-size: 14px;";
+const SUBMIT_BTN_STYLE = "width: 100%; background: #2563eb; color: #fff; font-weight: bold; padding: 10px; border: none; cursor: pointer; border-radius: 4px; min-height: 44px; font-size: 14px;";
 const TABLE_STYLE = "width: 100%; border-collapse: collapse; margin-top: 20px;";
 
 interface TagsProps {

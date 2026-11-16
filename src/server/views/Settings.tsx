@@ -1,12 +1,12 @@
 import type { FC } from "hono/jsx";
 import type { User } from "../db/schema";
 
-const PAGE_CONTAINER_STYLE = "max-width: 800px; margin: 0 auto; padding: 2rem;";
-const CARD_SECTION_STYLE = "background: #1e1e1e; padding: 1.5rem; border-radius: 8px; margin-top: 2rem;";
+const PAGE_CONTAINER_STYLE = "max-width: 800px; margin: 0 auto; padding: 1rem; width: 100%; box-sizing: border-box;";
+const CARD_SECTION_STYLE = "background: #1e1e1e; padding: 1.5rem; border-radius: 8px; margin-top: 1.5rem;";
 const CONTAINER_STYLE = "display: flex; flex-direction: column; gap: 1rem;";
-const KEY_BOX_STYLE = "display: flex; align-items: center; gap: 1rem; background: #2d2d2d; padding: 1rem; border-radius: 4px; border: 1px solid #444;";
-const KEY_CODE_STYLE = "flex-grow: 1; font-family: monospace; font-size: 1.1rem; color: #60a5fa;";
-const BTN_ROTATE_STYLE = "background: #3b82f6; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;";
+const KEY_BOX_STYLE = "display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; background: #2d2d2d; padding: 1rem; border-radius: 4px; border: 1px solid #444;";
+const KEY_CODE_STYLE = "flex-grow: 1; font-family: monospace; font-size: 1.1rem; color: #60a5fa; word-break: break-all;";
+const BTN_ROTATE_STYLE = "background: #2563eb; color: white; border: none; padding: 0.75rem 1.25rem; border-radius: 4px; cursor: pointer; min-height: 44px; font-weight: bold; font-size: 14px;";
 const WARNING_STYLE = "font-size: 0.9rem; color: #ef4444;";
 
 export const ApiKeyFragment: FC<{ apiKey: string }> = ({ apiKey }) => {
