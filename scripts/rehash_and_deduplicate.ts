@@ -6,6 +6,9 @@
  * updates post records in the database, moves files to their correct sharded paths,
  * and eliminates duplicate posts from newest to oldest (keeping the newest post and deleting older duplicates).
  *
+ * SELF-CONTAINED: Has no relative project imports. Can be piped directly via stdin
+ * into `docker compose exec -T mybooru bun -` or executed independently.
+ *
  * Usage:
  *   bun scripts/rehash_and_deduplicate.ts [options]
  *
@@ -25,6 +28,7 @@
 import { parseArgs } from "node:util";
 import { stat, unlink, rename, mkdir, readdir, rmdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { Database } from "bun:sqlite";
 
 const { values } = parseArgs({
   args: Bun.argv.slice(2),
@@ -63,17 +67,9 @@ Usage:
   process.exit(0);
 }
 
-// 1. Resolve DATA_DIR override before importing DB / paths
-if (values["data-dir"]) {
-  process.env.DATA_DIR = values["data-dir"];
-}
-
-const { db, initDb } = await import("../src/server/db");
-const { MediaService } = await import("../src/server/services/MediaService");
-const { PATHS } = await import("../src/server/util/paths");
-const { TagModel } = await import("../src/server/models/Tag");
-
-await initDb();
+// Resolve data directory
+const dataDir = values["data-dir"] || process.env.DATA_DIR || "./data";
+const dbPath = join(dataDir, "db.sqlite");
 
 const isConfirm = values.confirm && !values["dry-run"];
 const mergeTags = !values["no-merge-tags"];
@@ -114,6 +110,16 @@ async function computeSha256(filePath: string): Promise<string> {
 }
 
 /**
+ * Sharded storage path helper: dataDir/prefix/ab/cd/hash.ext
+ */
+function getShardedPath(prefix: "original" | "thumbs", hash: string, extension: string): string {
+  const l1 = hash.slice(0, 2);
+  const l2 = hash.slice(2, 4);
+  const ext = extension.startsWith(".") ? extension : `.${extension}`;
+  return join(dataDir, prefix, l1, l2, `${hash}${ext}`);
+}
+
+/**
  * Safely removes directory if it is empty, plus parent if empty
  */
 async function cleanupEmptyDirs(dir: string) {
@@ -130,13 +136,46 @@ async function cleanupEmptyDirs(dir: string) {
   } catch {}
 }
 
+/**
+ * Fallback thumbnail generation using FFmpeg CLI
+ */
+async function generateThumbnail(inputPath: string, outputPath: string): Promise<boolean> {
+  await mkdir(dirname(outputPath), { recursive: true });
+  try {
+    const proc = Bun.spawn([
+      "ffmpeg",
+      "-y",
+      "-i", inputPath,
+      "-vf", "scale='min(300,iw)':-1",
+      "-frames:v", "1",
+      "-c:v", "libwebp",
+      "-quality", "80",
+      outputPath
+    ], { stderr: "pipe" });
+    const code = await proc.exited;
+    return code === 0;
+  } catch {
+    return false;
+  }
+}
+
 async function run() {
   console.log("=== MyBooru Media Rehashing & Deduplication ===");
-  console.log(`Database:  ${PATHS.DB}`);
-  console.log(`Data Dir:  ${PATHS.DATA}`);
+  console.log(`Database:  ${dbPath}`);
+  console.log(`Data Dir:  ${dataDir}`);
   console.log(`Mode:      ${isConfirm ? "EXECUTE (Permanent changes will be applied!)" : "DRY-RUN (Preview only, no changes)"}`);
   console.log(`Tag Merge: ${mergeTags ? "ENABLED (Tags from deleted duplicates will be merged into kept post)" : "DISABLED"}`);
   console.log("--------------------------------------------------\n");
+
+  const dbStat = await stat(dbPath).catch(() => null);
+  if (!dbStat) {
+    console.error(`Error: Database file not found at: ${dbPath}`);
+    console.error("Please verify DATA_DIR or pass --data-dir <path>");
+    process.exit(1);
+  }
+
+  const db = new Database(dbPath);
+  db.exec("PRAGMA journal_mode = WAL;");
 
   // Fetch all posts ordered strictly from NEWEST to OLDEST
   const posts = db.query(`
@@ -162,7 +201,7 @@ async function run() {
       process.stdout.write(`\rHashing files: ${processedCount}/${posts.length}...`);
     }
 
-    const originalPath = MediaService.getShardedPath("original", post.hash, post.extension);
+    const originalPath = getShardedPath("original", post.hash, post.extension);
 
     try {
       const s = await stat(originalPath);
@@ -273,16 +312,16 @@ async function run() {
       if (mergeTags) {
         const loserTags = db.query("SELECT tag_id FROM post_tags WHERE post_id = ?").all(loser.id) as { tag_id: number }[];
         for (const t of loserTags) {
-          const linked = TagModel.linkToPost(winner.id, t.tag_id);
-          if (!linked) {
+          const res = db.prepare("INSERT OR IGNORE INTO post_tags (post_id, tag_id) VALUES (?, ?)").run(winner.id, t.tag_id);
+          if (res.changes === 0) {
             // Already present on winner, decrement count for loser copy
-            TagModel.decrementCount(t.tag_id);
+            db.prepare("UPDATE tags SET post_count = MAX(0, post_count - 1) WHERE id = ?").run(t.tag_id);
           }
         }
       } else {
         const loserTags = db.query("SELECT tag_id FROM post_tags WHERE post_id = ?").all(loser.id) as { tag_id: number }[];
         for (const t of loserTags) {
-          TagModel.decrementCount(t.tag_id);
+          db.prepare("UPDATE tags SET post_count = MAX(0, post_count - 1) WHERE id = ?").run(t.tag_id);
         }
       }
 
@@ -293,8 +332,8 @@ async function run() {
       // Clean up loser's physical files
       // CAUTION: Do NOT delete file if loser's old hash happens to match winner's new hash!
       if (loser.oldHash !== winner.newHash) {
-        const loserOrig = MediaService.getShardedPath("original", loser.oldHash, loser.extension);
-        const loserThumb = MediaService.getShardedPath("thumbs", loser.oldHash, ".webp");
+        const loserOrig = getShardedPath("original", loser.oldHash, loser.extension);
+        const loserThumb = getShardedPath("thumbs", loser.oldHash, ".webp");
 
         await unlink(loserOrig).catch(() => {});
         await unlink(loserThumb).catch(() => {});
@@ -312,10 +351,10 @@ async function run() {
   let movedFiles = 0;
 
   for (const item of winnersToUpdate) {
-    const srcOrig = MediaService.getShardedPath("original", item.oldHash, item.extension);
-    const dstOrig = MediaService.getShardedPath("original", item.newHash, item.extension);
-    const srcThumb = MediaService.getShardedPath("thumbs", item.oldHash, ".webp");
-    const dstThumb = MediaService.getShardedPath("thumbs", item.newHash, ".webp");
+    const srcOrig = getShardedPath("original", item.oldHash, item.extension);
+    const dstOrig = getShardedPath("original", item.newHash, item.extension);
+    const srcThumb = getShardedPath("thumbs", item.oldHash, ".webp");
+    const dstThumb = getShardedPath("thumbs", item.newHash, ".webp");
 
     if (srcOrig !== dstOrig) {
       await mkdir(dirname(dstOrig), { recursive: true });
@@ -345,7 +384,7 @@ async function run() {
           });
         } else {
           // Source thumb was missing, regenerate from destination original
-          await MediaService.generateThumbnail(dstOrig, dstThumb).catch(() => {});
+          await generateThumbnail(dstOrig, dstThumb);
         }
       } else {
         await unlink(srcThumb).catch(() => {});
