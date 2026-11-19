@@ -146,6 +146,19 @@ export const PostDetail: FC<PostDetailProps> = ({
             </li>
             <li>
               <a 
+                href={`/explorer/post-locations/${post.id}`}
+                id="open-directory-btn" 
+                class="option-btn"
+                hx-get={`/explorer/post-locations/${post.id}`}
+                hx-target="#directory-locations-modal-body"
+                hx-swap="innerHTML"
+                onclick="document.getElementById('directory-locations-modal').style.display = 'flex';"
+              >
+                📁 Open in Directory
+              </a>
+            </li>
+            <li>
+              <a 
                 href="#" 
                 class="text-red option-btn"
                 hx-delete={`/post/${post.id}`}
@@ -255,6 +268,23 @@ export const PostDetail: FC<PostDetailProps> = ({
         {nextUrl && (
           <a href={nextUrl} class="lightbox-nav lightbox-next" rel="next" aria-label="Next post">›</a>
         )}
+      </div>
+
+      {/* Directory Location Picker Modal */}
+      <div 
+        id="directory-locations-modal" 
+        style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9999; align-items:center; justify-content:center;"
+        onclick="if (event.target === this) this.style.display = 'none';"
+      >
+        <div style="background:#1e1e1e; border:1px solid #444; border-radius:8px; padding:20px; max-width:440px; width:90%; box-shadow:0 10px 25px rgba(0,0,0,0.5);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h3 style="margin:0; font-size:16px;">📁 Choose Directory</h3>
+            <button type="button" style="background:none; border:none; color:#aaa; font-size:18px; cursor:pointer;" onclick="document.getElementById('directory-locations-modal').style.display = 'none';">✕</button>
+          </div>
+          <div id="directory-locations-modal-body">
+            <p style="color:#aaa; font-size:13px;">Checking directory locations...</p>
+          </div>
+        </div>
       </div>
     </>
   );

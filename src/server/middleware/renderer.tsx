@@ -36,9 +36,9 @@ export const renderer = jsxRenderer(({ children, title }: RendererProps & { chil
         <meta name="apple-mobile-web-app-title" content="PiBooru" />
         <link rel="apple-touch-icon" href="/public/icons/icon-192.svg" />
         
-        <link rel="stylesheet" href="/public/css/main.css?v=0.6.1" />
+        <link rel="stylesheet" href="/public/css/main.css?v=0.6.2" />
         <script src="/public/js/htmx.min.js" defer></script>
-        <script src="/public/dist/index.js?v=0.6.1" defer></script>
+        <script src="/public/dist/index.js?v=0.6.2" defer></script>
       </head>
       <body hx-boost="true">
         {/* Top Header: Desktop Dual Bar + Mobile App Bar */}
@@ -73,6 +73,7 @@ export const renderer = jsxRenderer(({ children, title }: RendererProps & { chil
             <menu>
               <li><a href="/" class={currentPath === '/' ? 'active' : ''}>Posts</a></li>
               <li><a href="/clean" class={currentPath.startsWith('/clean') ? 'active' : ''}>Clean</a></li>
+              <li><a href="/explorer" class={currentPath.startsWith('/explorer') ? 'active' : ''}>Explorer</a></li>
               <li><a href="/tags" class={currentPath.startsWith('/tags') || currentPath.startsWith('/tag/') ? 'active' : ''}>Tags</a></li>
               <li><a href="/upload" class={currentPath.startsWith('/upload') ? 'active' : ''}>Upload</a></li>
               <li><a href="/wiki_pages" class={currentPath.startsWith('/wiki') ? 'active' : ''}>Wiki</a></li>

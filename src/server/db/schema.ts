@@ -113,3 +113,35 @@ export const AudioOverlaySchema = z.object({
 });
 
 export type AudioOverlay = z.infer<typeof AudioOverlaySchema>;
+
+// --- Virtual Directories ---
+
+export const DirectorySchema = z.object({
+  id: z.number().int().positive(),
+  parent_id: z.number().int().positive().nullable(),
+  name: z.string().min(1),
+  created_at: z.string(),
+});
+
+export type Directory = z.infer<typeof DirectorySchema>;
+
+export const DirectoryItemSchema = z.object({
+  id: z.number().int().positive(),
+  directory_id: z.number().int().positive(),
+  post_id: z.number().int().positive(),
+  custom_name: z.string().nullable().optional(),
+  created_at: z.string(),
+});
+
+export type DirectoryItem = z.infer<typeof DirectoryItemSchema>;
+
+export type DirectoryItemWithPost = DirectoryItem & {
+  hash: string;
+  extension: string;
+  size_bytes: number;
+  mime_type: string;
+  rating: PostRating;
+  width: number | null;
+  height: number | null;
+  post_created_at: string;
+};

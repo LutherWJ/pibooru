@@ -3,6 +3,7 @@ import { extname, join } from "node:path";
 import { unlink, mkdir } from "node:fs/promises";
 import { MediaService } from "../services/MediaService";
 import { PostModel } from "../models/Post";
+import { DirectoryModel } from "../models/Directory";
 import { PATHS } from "../util/paths";
 import { logger } from "../util/logger";
 import { Upload } from "../views/Upload";
@@ -91,6 +92,13 @@ export class UploadController {
                 has_children: false,
                 user_id: null,
             }, rawTags);
+
+            // Automatically place newly uploaded post into Root directory
+            try {
+                DirectoryModel.addToRoot(postId, `${hash}${extension}`);
+            } catch (dirErr) {
+                logger.error({ domain: "UPLOAD", postId, err: dirErr }, "Failed to link post to root directory");
+            }
 
             logger.info({
                 domain: "UPLOAD",

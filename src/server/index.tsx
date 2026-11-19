@@ -23,6 +23,7 @@ import { cleanRouter } from "./routes/clean";
 import { postRouter } from "./routes/posts";
 import { tagRouter } from "./routes/tags";
 import { uploadRouter } from "./routes/upload";
+import { explorerRouter } from "./routes/explorer";
 
 // Log system paths for debugging
 logger.info({
@@ -104,6 +105,7 @@ app.route("/", systemRouter);
 app.route("/", mediaRouter);
 app.route("/", authRouter);
 app.route("/", settingsRouter);
+app.route("/", explorerRouter);
 app.route("/", viewerRouter);
 app.route("/", cleanRouter);
 app.route("/", postRouter);
