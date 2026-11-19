@@ -9,6 +9,14 @@ export const Wiki: FC = () => {
     <>
       <aside id="sidebar">
         <section class="sidebar-box">
+          <h2>Documentation</h2>
+          <ul class="tag-list" style="font-size: 12px; line-height: 1.8;">
+            <li><a href="/wiki_pages" class="tag-type-character">Search Syntax Guide</a></li>
+            <li><a href="/wiki/api" class="tag-type-artist">REST API (For Scripters)</a></li>
+          </ul>
+        </section>
+
+        <section class="sidebar-box">
           <h2>Query Syntax</h2>
           <ul class="tag-list" style="font-size: 12px; line-height: 1.8;">
             <li><a href="#overview">Overview</a></li>

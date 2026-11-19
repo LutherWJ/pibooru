@@ -82,6 +82,8 @@ h1, h2, h3 {
   padding: 0;
   display: flex;
   gap: 15px;
+  flex: 1;
+  align-items: center;
 }
 
 .desktop-header-bar menu li {
@@ -90,6 +92,11 @@ h1, h2, h3 {
 
 .desktop-header-bar menu a {
   font-weight: bold;
+}
+
+.desktop-header-bar menu a:hover,
+.desktop-header-bar menu a.active {
+  color: #38bdf8;
 }
 
 .mobile-header-bar {

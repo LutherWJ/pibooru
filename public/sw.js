@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pibooru-v3';
+const CACHE_NAME = 'pibooru-v4';
 const ASSETS = [
   '/',
   '/public/css/main.css',

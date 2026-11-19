@@ -9,22 +9,101 @@ const KEY_CODE_STYLE = "flex-grow: 1; font-family: monospace; font-size: 1.1rem;
 const BTN_ROTATE_STYLE = "background: #2563eb; color: white; border: none; padding: 0.75rem 1.25rem; border-radius: 4px; cursor: pointer; min-height: 44px; font-weight: bold; font-size: 14px;";
 const WARNING_STYLE = "font-size: 0.9rem; color: #ef4444;";
 
+const BTN_ACTION_STYLE = "background: #334155; color: white; border: none; padding: 0.75rem 1rem; border-radius: 4px; cursor: pointer; min-height: 44px; font-weight: bold; font-size: 13px; display: inline-flex; align-items: center; justify-content: center;";
+
 export const ApiKeyFragment: FC<{ apiKey: string }> = ({ apiKey }) => {
   return (
     <div id="api-key-container" style={CONTAINER_STYLE}>
       <div style={KEY_BOX_STYLE}>
-        <code id="api-key-display" style={KEY_CODE_STYLE}>
-          {apiKey || "None generated yet"}
-        </code>
-        <button 
-          hx-post="/settings/rotate-api-key"
-          hx-target="#api-key-container"
-          hx-swap="outerHTML"
-          class="button"
-          style={BTN_ROTATE_STYLE}
-        >
-          {apiKey ? "Rotate Key" : "Generate Key"}
-        </button>
+        {apiKey ? (
+          <>
+            <div style="flex-grow: 1; display: flex; align-items: center; min-width: 200px;">
+              <code 
+                id="api-key-display" 
+                data-key={apiKey}
+                data-masked="true"
+                style={KEY_CODE_STYLE}
+              >
+                ••••••••••••••••••••••••••••••••
+              </code>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button
+                type="button"
+                id="copy-api-key-btn"
+                class="button"
+                style={BTN_ACTION_STYLE}
+                onclick={`
+                  const el = document.getElementById('api-key-display');
+                  const key = el ? el.getAttribute('data-key') : '';
+                  if (key) {
+                    navigator.clipboard.writeText(key).then(() => {
+                      const btn = document.getElementById('copy-api-key-btn');
+                      if (btn) {
+                        const originalText = btn.textContent;
+                        btn.textContent = 'Copied! ✓';
+                        btn.style.background = '#16a34a';
+                        setTimeout(() => {
+                          btn.textContent = originalText;
+                          btn.style.background = '#334155';
+                        }, 2000);
+                      }
+                    });
+                  }
+                `}
+              >
+                Copy Key
+              </button>
+              <button
+                type="button"
+                id="toggle-reveal-key-btn"
+                class="button"
+                style={BTN_ACTION_STYLE}
+                onclick={`
+                  const el = document.getElementById('api-key-display');
+                  const btn = document.getElementById('toggle-reveal-key-btn');
+                  if (el && btn) {
+                    const isMasked = el.getAttribute('data-masked') === 'true';
+                    if (isMasked) {
+                      el.textContent = el.getAttribute('data-key') || '';
+                      el.setAttribute('data-masked', 'false');
+                      btn.textContent = 'Hide';
+                    } else {
+                      el.textContent = '••••••••••••••••••••••••••••••••';
+                      el.setAttribute('data-masked', 'true');
+                      btn.textContent = 'Reveal';
+                    }
+                  }
+                `}
+              >
+                Reveal
+              </button>
+              <button 
+                hx-post="/settings/rotate-api-key"
+                hx-target="#api-key-container"
+                hx-swap="outerHTML"
+                hx-confirm="Are you sure you want to rotate your API key? The current key will stop working immediately."
+                class="button"
+                style={BTN_ROTATE_STYLE}
+              >
+                Rotate Key
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <code style={KEY_CODE_STYLE}>None generated yet</code>
+            <button 
+              hx-post="/settings/rotate-api-key"
+              hx-target="#api-key-container"
+              hx-swap="outerHTML"
+              class="button"
+              style={BTN_ROTATE_STYLE}
+            >
+              Generate Key
+            </button>
+          </>
+        )}
       </div>
       {apiKey && (
         <div style={WARNING_STYLE}>
@@ -92,8 +171,8 @@ export const Settings: FC<{ user: User; apiKey: string | null }> = ({ user, apiK
       <section style={CARD_SECTION_STYLE}>
         <h2>API Access</h2>
         <p style="color: #a0a0a0; margin-bottom: 1.5rem;">
-          Use this API key to authenticate scripts and third-party applications. 
-          Keep it secret!
+          Use this API key to authenticate scripts and third-party applications. Keep it secret!
+          Check the <a href="/wiki/api" style="color: #38bdf8; font-weight: bold; text-decoration: underline;">REST API Reference</a> for endpoint documentation and script examples.
         </p>
         
         <ApiKeyFragment apiKey={apiKey || ""} />

@@ -36,9 +36,9 @@ export const renderer = jsxRenderer(({ children, title }: RendererProps & { chil
         <meta name="apple-mobile-web-app-title" content="PiBooru" />
         <link rel="apple-touch-icon" href="/public/icons/icon-192.svg" />
         
-        <link rel="stylesheet" href="/public/css/main.css?v=0.6.0" />
+        <link rel="stylesheet" href="/public/css/main.css?v=0.6.1" />
         <script src="/public/js/htmx.min.js" defer></script>
-        <script src="/public/dist/index.js?v=0.6.0" defer></script>
+        <script src="/public/dist/index.js?v=0.6.1" defer></script>
       </head>
       <body hx-boost="true">
         {/* Top Header: Desktop Dual Bar + Mobile App Bar */}
@@ -67,20 +67,22 @@ export const renderer = jsxRenderer(({ children, title }: RendererProps & { chil
             </div>
           </div>
 
-          {/* Desktop Classic Danbooru Header */}
+          {/* Desktop Consolidated Header */}
           <div class="desktop-header-bar">
             <h1><a href="/">PiBooru</a></h1>
             <menu>
-              <li><a href="/">Posts</a></li>
-              <li><a href="/tags">Tags</a></li>
-              <li><a href="/upload">Upload</a></li>
+              <li><a href="/" class={currentPath === '/' ? 'active' : ''}>Posts</a></li>
+              <li><a href="/clean" class={currentPath.startsWith('/clean') ? 'active' : ''}>Clean</a></li>
+              <li><a href="/tags" class={currentPath.startsWith('/tags') || currentPath.startsWith('/tag/') ? 'active' : ''}>Tags</a></li>
+              <li><a href="/upload" class={currentPath.startsWith('/upload') ? 'active' : ''}>Upload</a></li>
+              <li><a href="/wiki_pages" class={currentPath.startsWith('/wiki') ? 'active' : ''}>Wiki</a></li>
               <li><a href="#" id="help-link">Help (?)</a></li>
               {c.var.user ? (
                 <>
                   <li class="user-info" style="margin-left: auto;">
                     <span>{c.var.user.username}</span>
                   </li>
-                  <li><a href="/settings">Settings</a></li>
+                  <li><a href="/settings" class={currentPath.startsWith('/settings') ? 'active' : ''}>Settings</a></li>
                   <li><a href="/logout" hx-boost="false">Logout</a></li>
                 </>
               ) : (
@@ -89,16 +91,6 @@ export const renderer = jsxRenderer(({ children, title }: RendererProps & { chil
             </menu>
           </div>
         </header>
-
-        {/* Desktop Classic Subnav */}
-        <nav id="nav">
-          <menu>
-            <li><a href="/">Listing</a></li>
-            <li><a href="/clean">Clean</a></li>
-            <li><a href="/upload">Upload</a></li>
-            <li><a href="/wiki_pages">Wiki</a></li>
-          </menu>
-        </nav>
 
         {/* Mobile Slide-down Search Drawer */}
         <div id="mobile-search-drawer" class="mobile-search-drawer">

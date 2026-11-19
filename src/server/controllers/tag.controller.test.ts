@@ -104,6 +104,19 @@ describe("TagController Autocomplete & Documentation", () => {
     expect(html).toContain("Clean Mode (/clean)");
   });
 
+  it("should render the dedicated REST API documentation page at /wiki/api", async () => {
+    const res = await app.request("/wiki/api", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("REST API &amp; Scripting Guide");
+    expect(html).toContain("POST /upload");
+    expect(html).toContain("POST /post/:id/rating");
+    expect(html).toContain("DELETE /post/:id");
+  });
+
   it("should render the documentation page at /help/search", async () => {
     const res = await app.request("/help/search", {
       headers: { Authorization: `Bearer ${apiKey}` },
