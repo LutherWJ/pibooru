@@ -112,6 +112,17 @@ describe("DirectoryModel (Virtual File Explorer)", () => {
     expect(item1).toBeDefined();
     expect(item1!.custom_name).toBe("my_cat.png");
     expect(item1!.size_bytes).toBe(1024);
+
+    // Test pagination (limit & offset) and total item count
+    const total = DirectoryModel.getTotalItemCount(1);
+    expect(total).toBeGreaterThanOrEqual(2);
+
+    const firstPage = DirectoryModel.getItems(1, "name", 1, 0);
+    expect(firstPage.length).toBe(1);
+
+    const secondPage = DirectoryModel.getItems(1, "name", 1, 1);
+    expect(secondPage.length).toBe(1);
+    expect(secondPage[0]!.id).not.toBe(firstPage[0]!.id);
   });
 
   it("should copy an item to another folder and auto-suffix with (1) on collision", () => {

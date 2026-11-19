@@ -179,4 +179,15 @@ describe("Explorer Controller & Endpoints", () => {
     expect(html).toContain("location-picker-content");
     expect(html).toContain("Root");
   });
+
+  it("should stream next items chunk on GET /explorer/items-chunk", async () => {
+    DirectoryModel.addToRoot(samplePostId, "chunk_test.png");
+    const res = await app.request(`/explorer/items-chunk?dir=1&offset=0&view=grid&sort=name`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("explorer-item file-item");
+  });
 });

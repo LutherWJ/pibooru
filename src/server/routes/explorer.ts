@@ -5,6 +5,7 @@ import type { AppEnv } from "../types";
 export const explorerRouter = new Hono<AppEnv>();
 
 explorerRouter.get("/explorer", ExplorerController.showExplorer);
+explorerRouter.get("/explorer/items-chunk", ExplorerController.getItemsChunk);
 explorerRouter.post("/explorer/folders", ExplorerController.createFolder);
 explorerRouter.post("/explorer/folders/:id/rename", ExplorerController.renameFolder);
 explorerRouter.delete("/explorer/folders/:id", ExplorerController.deleteFolder);

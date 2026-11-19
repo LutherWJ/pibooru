@@ -107,9 +107,15 @@ export class DirectoryModel {
   }
 
   /**
-   * Retrieves all file items inside a directory, joined with posts table.
+   * Retrieves file items inside a directory, joined with posts table.
+   * Supports pagination via optional limit and offset.
    */
-  static getItems(directoryId: number, sortBy: "name" | "date" | "size" = "name"): DirectoryItemWithPost[] {
+  static getItems(
+    directoryId: number,
+    sortBy: "name" | "date" | "size" = "name",
+    limit?: number,
+    offset: number = 0
+  ): DirectoryItemWithPost[] {
     let orderClause = "COALESCE(di.custom_name, p.hash || p.extension) COLLATE NOCASE ASC";
     if (sortBy === "date") {
       orderClause = "p.created_at DESC";
@@ -117,7 +123,7 @@ export class DirectoryModel {
       orderClause = "p.size_bytes DESC";
     }
 
-    return db.query(`
+    let sql = `
       SELECT 
         di.id,
         di.directory_id,
@@ -136,7 +142,21 @@ export class DirectoryModel {
       JOIN posts p ON di.post_id = p.id
       WHERE di.directory_id = ?
       ORDER BY ${orderClause}
-    `).all(directoryId) as DirectoryItemWithPost[];
+    `;
+
+    if (typeof limit === "number" && limit > 0) {
+      sql += ` LIMIT ${limit} OFFSET ${offset}`;
+    }
+
+    return db.query(sql).all(directoryId) as DirectoryItemWithPost[];
+  }
+
+  /**
+   * Retrieves the total count of file items inside a directory.
+   */
+  static getTotalItemCount(directoryId: number): number {
+    const res = db.query("SELECT COUNT(*) as count FROM directory_items WHERE directory_id = ?").get(directoryId) as { count: number } | null;
+    return res?.count || 0;
   }
 
   /**

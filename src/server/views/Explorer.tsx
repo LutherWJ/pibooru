@@ -10,6 +10,8 @@ interface ExplorerProps {
   viewMode?: "grid" | "list";
   sortBy?: "name" | "date" | "size";
   highlightPostId?: number;
+  hasMore?: boolean;
+  nextOffset?: number;
 }
 
 function formatBytes(bytes: number): string {
@@ -20,6 +22,120 @@ function formatBytes(bytes: number): string {
   return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
 }
 
+export const ExplorerGridItem: FC<{ item: DirectoryItemWithPost; isHighlight?: boolean }> = ({
+  item,
+  isHighlight,
+}) => {
+  const thumbUrl = `/data/thumbs/${item.hash.slice(0, 2)}/${item.hash.slice(2, 4)}/${item.hash}.webp`;
+  const name = item.custom_name || `${item.hash}${item.extension}`;
+  return (
+    <div
+      key={`item-${item.id}`}
+      class={`explorer-item file-item ${isHighlight ? "highlighted" : ""}`}
+      data-type="file"
+      data-item-id={item.id}
+      data-post-id={item.post_id}
+      data-name={name}
+      draggable={true}
+      tabIndex={0}
+    >
+      <div class="item-thumb-wrapper">
+        <img
+          src={thumbUrl}
+          alt={name}
+          loading="lazy"
+          class="item-thumb"
+        />
+        <span class={`rating-pill rating-${item.rating}`}>{item.rating.toUpperCase()}</span>
+      </div>
+      <div class="item-name" title={name}>
+        {name}
+      </div>
+      <div class="item-meta">{formatBytes(item.size_bytes)}</div>
+    </div>
+  );
+};
+
+export const ExplorerListItem: FC<{ item: DirectoryItemWithPost; isHighlight?: boolean }> = ({
+  item,
+  isHighlight,
+}) => {
+  const name = item.custom_name || `${item.hash}${item.extension}`;
+  return (
+    <tr
+      key={`item-row-${item.id}`}
+      class={`explorer-item file-item ${isHighlight ? "highlighted" : ""}`}
+      data-type="file"
+      data-item-id={item.id}
+      data-post-id={item.post_id}
+      data-name={name}
+      draggable={true}
+    >
+      <td class="text-center">
+        <span class={`rating-pill rating-${item.rating}`}>{item.rating.toUpperCase()}</span>
+      </td>
+      <td>
+        <a href={`/post/${item.post_id}`} class="file-name-link" title={name}>
+          {name}
+        </a>
+      </td>
+      <td class="text-muted">{item.extension.replace(".", "").toUpperCase()}</td>
+      <td class="text-muted">{formatBytes(item.size_bytes)}</td>
+      <td class="text-muted">{new Date(item.post_created_at).toLocaleDateString()}</td>
+    </tr>
+  );
+};
+
+export const ExplorerItemsChunk: FC<{
+  dirId: number;
+  items: DirectoryItemWithPost[];
+  viewMode: "grid" | "list";
+  sortBy: string;
+  hasMore: boolean;
+  nextOffset: number;
+}> = ({ dirId, items, viewMode, sortBy, hasMore, nextOffset }) => {
+  if (viewMode === "grid") {
+    return (
+      <>
+        {items.map((item) => (
+          <ExplorerGridItem key={`item-${item.id}`} item={item} />
+        ))}
+        {hasMore && (
+          <div
+            class="explorer-sentinel"
+            hx-get={`/explorer/items-chunk?dir=${dirId}&view=grid&sort=${sortBy}&offset=${nextOffset}`}
+            hx-trigger="revealed"
+            hx-swap="outerHTML"
+            style="grid-column: 1 / -1; text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;"
+          >
+            <span>Loading more files...</span>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {items.map((item) => (
+        <ExplorerListItem key={`item-row-${item.id}`} item={item} />
+      ))}
+      {hasMore && (
+        <tr
+          class="explorer-sentinel"
+          hx-get={`/explorer/items-chunk?dir=${dirId}&view=list&sort=${sortBy}&offset=${nextOffset}`}
+          hx-trigger="revealed"
+          hx-swap="outerHTML"
+        >
+          <td colspan={5} style="text-align: center; padding: 15px; color: #94a3b8; font-size: 13px;">
+            Loading more files...
+          </td>
+        </tr>
+      )}
+    </>
+  );
+};
+
 export const ExplorerContent: FC<ExplorerProps> = ({
   currentDir,
   breadcrumbs,
@@ -28,6 +144,8 @@ export const ExplorerContent: FC<ExplorerProps> = ({
   viewMode = "grid",
   sortBy = "name",
   highlightPostId,
+  hasMore = false,
+  nextOffset = 0,
 }) => {
   return (
     <div id="explorer-content" class="explorer-content-container">
@@ -196,36 +314,26 @@ export const ExplorerContent: FC<ExplorerProps> = ({
           ))}
 
           {/* Media Items in Grid */}
-          {items.map((item) => {
-            const isHighlight = highlightPostId === item.post_id;
-            const thumbUrl = `/data/thumbs/${item.hash.slice(0, 2)}/${item.hash.slice(2, 4)}/${item.hash}.webp`;
-            return (
-              <div
-                key={`item-${item.id}`}
-                class={`explorer-item file-item ${isHighlight ? "highlighted" : ""}`}
-                data-type="file"
-                data-item-id={item.id}
-                data-post-id={item.post_id}
-                data-name={item.custom_name || `${item.hash}${item.extension}`}
-                draggable={true}
-                tabIndex={0}
-              >
-                <div class="item-thumb-wrapper">
-                  <img
-                    src={thumbUrl}
-                    alt={item.custom_name || item.hash}
-                    loading="lazy"
-                    class="item-thumb"
-                  />
-                  <span class={`rating-pill rating-${item.rating}`}>{item.rating.toUpperCase()}</span>
-                </div>
-                <div class="item-name" title={item.custom_name || item.hash}>
-                  {item.custom_name || `${item.hash.slice(0, 16)}...`}
-                </div>
-                <div class="item-meta">{formatBytes(item.size_bytes)}</div>
-              </div>
-            );
-          })}
+          {items.map((item) => (
+            <ExplorerGridItem
+              key={`item-${item.id}`}
+              item={item}
+              isHighlight={highlightPostId === item.post_id}
+            />
+          ))}
+
+          {/* Infinite Scroll Sentinel */}
+          {hasMore && (
+            <div
+              class="explorer-sentinel"
+              hx-get={`/explorer/items-chunk?dir=${currentDir.id}&view=grid&sort=${sortBy}&offset=${nextOffset}`}
+              hx-trigger="revealed"
+              hx-swap="outerHTML"
+              style="grid-column: 1 / -1; text-align: center; padding: 24px; color: #94a3b8; font-size: 13px; font-weight: 500;"
+            >
+              <span>Loading more files...</span>
+            </div>
+          )}
         </div>
       ) : (
         /* List Table View */
@@ -267,33 +375,26 @@ export const ExplorerContent: FC<ExplorerProps> = ({
                   <td class="text-muted">{new Date(dir.created_at).toLocaleDateString()}</td>
                 </tr>
               ))}
-              {items.map((item) => {
-                const isHighlight = highlightPostId === item.post_id;
-                const name = item.custom_name || `${item.hash}${item.extension}`;
-                return (
-                  <tr
-                    key={`item-row-${item.id}`}
-                    class={`explorer-item file-item ${isHighlight ? "highlighted" : ""}`}
-                    data-type="file"
-                    data-item-id={item.id}
-                    data-post-id={item.post_id}
-                    data-name={name}
-                    draggable={true}
-                  >
-                    <td class="text-center">
-                      <span class={`rating-pill rating-${item.rating}`}>{item.rating.toUpperCase()}</span>
-                    </td>
-                    <td>
-                      <a href={`/post/${item.post_id}`} class="file-name-link" title={name}>
-                        {name}
-                      </a>
-                    </td>
-                    <td class="text-muted">{item.extension.replace(".", "").toUpperCase()}</td>
-                    <td class="text-muted">{formatBytes(item.size_bytes)}</td>
-                    <td class="text-muted">{new Date(item.post_created_at).toLocaleDateString()}</td>
-                  </tr>
-                );
-              })}
+              {items.map((item) => (
+                <ExplorerListItem
+                  key={`item-row-${item.id}`}
+                  item={item}
+                  isHighlight={highlightPostId === item.post_id}
+                />
+              ))}
+              {/* Infinite Scroll Sentinel */}
+              {hasMore && (
+                <tr
+                  class="explorer-sentinel"
+                  hx-get={`/explorer/items-chunk?dir=${currentDir.id}&view=list&sort=${sortBy}&offset=${nextOffset}`}
+                  hx-trigger="revealed"
+                  hx-swap="outerHTML"
+                >
+                  <td colspan={5} style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px; font-weight: 500;">
+                    Loading more files...
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

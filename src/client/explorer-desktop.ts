@@ -361,20 +361,91 @@ class ExplorerDesktopManager {
     if (!input || !input.value.trim()) return;
 
     const currentDir = document.getElementById("explorer-meta")?.getAttribute("data-current-dir") || "1";
+    const name = input.value.trim();
     const form = new FormData();
     form.append("parent_id", currentDir);
-    form.append("name", input.value.trim());
+    form.append("name", name);
+
+    this.hideAllModals();
 
     try {
       const res = await fetch("/explorer/folders", { method: "POST", body: form });
       if (res.ok) {
-        this.hideAllModals();
-        this.reloadView();
+        const data = await res.json() as any;
+        const folder = data.folder;
+        this.insertNewFolderToDOM(folder);
       } else {
         alert(`Error: ${await res.text()}`);
       }
     } catch (err: any) {
       alert(`Error creating folder: ${err.message}`);
+    }
+  }
+
+  private insertNewFolderToDOM(folder: { id: number; name: string }) {
+    const emptyState = document.querySelector(".explorer-empty-state");
+    if (emptyState) {
+      this.reloadView();
+      return;
+    }
+
+    const currentUrl = new URL(window.location.href);
+    const view = currentUrl.searchParams.get("view") || "grid";
+    const sort = currentUrl.searchParams.get("sort") || "name";
+
+    const container = document.getElementById("explorer-items-container");
+    if (!container) return;
+
+    if (view === "grid") {
+      const folderDiv = document.createElement("div");
+      folderDiv.className = "explorer-item folder-item";
+      folderDiv.setAttribute("data-type", "folder");
+      folderDiv.setAttribute("data-id", folder.id.toString());
+      folderDiv.setAttribute("data-name", folder.name);
+      folderDiv.draggable = true;
+      folderDiv.tabIndex = 0;
+      folderDiv.innerHTML = `
+        <div class="item-icon folder-icon">📁</div>
+        <div class="item-name" title="${folder.name}">${folder.name}</div>
+        <div class="item-meta">0 files</div>
+      `;
+      // Prepend to folders or before the first file item
+      const firstFile = container.querySelector(".file-item");
+      if (firstFile) {
+        container.insertBefore(folderDiv, firstFile);
+      } else {
+        container.appendChild(folderDiv);
+      }
+    } else {
+      const tr = document.createElement("tr");
+      tr.className = "explorer-item folder-item";
+      tr.setAttribute("data-type", "folder");
+      tr.setAttribute("data-id", folder.id.toString());
+      tr.setAttribute("data-name", folder.name);
+      tr.draggable = true;
+      tr.innerHTML = `
+        <td class="text-center" style="font-size: 18px;">📁</td>
+        <td class="font-bold">
+          <a href="/explorer?dir=${folder.id}&view=${view}&sort=${sort}"
+             hx-get="/explorer?dir=${folder.id}&view=${view}&sort=${sort}"
+             hx-target="#explorer-content"
+             hx-swap="outerHTML"
+             hx-push-url="/explorer?dir=${folder.id}&view=${view}&sort=${sort}"
+             data-dir-id="${folder.id}"
+             class="breadcrumb-drop-target">
+            ${folder.name}
+          </a>
+        </td>
+        <td class="text-muted">Folder</td>
+        <td class="text-muted">0 items</td>
+        <td class="text-muted">${new Date().toLocaleDateString()}</td>
+      `;
+      const firstFile = container.querySelector(".file-item");
+      if (firstFile) {
+        container.insertBefore(tr, firstFile);
+      } else {
+        container.appendChild(tr);
+      }
     }
   }
 
@@ -386,21 +457,43 @@ class ExplorerDesktopManager {
     const type = modal.getAttribute("data-target-type");
     const id = modal.getAttribute("data-target-id");
     if (!type || !id) return;
+    const newName = input.value.trim();
+
+    // Optimistically update the DOM element
+    const currentContainer = document.getElementById("explorer-items-container");
+    const el = currentContainer?.querySelector<HTMLElement>(
+      type === "folder" ? `.folder-item[data-id="${id}"]` : `.file-item[data-item-id="${id}"]`
+    );
+    const oldName = el?.getAttribute("data-name") || "";
+
+    if (el) {
+      el.setAttribute("data-name", newName);
+      const nameEl = el.querySelector(".item-name") || el.querySelector(".file-name-link");
+      if (nameEl) {
+        nameEl.textContent = newName;
+        nameEl.setAttribute("title", newName);
+      }
+    }
+    this.hideAllModals();
 
     const endpoint = type === "folder" ? `/explorer/folders/${id}/rename` : `/explorer/items/${id}/rename`;
     const form = new FormData();
-    form.append("name", input.value.trim());
+    form.append("name", newName);
 
     try {
       const res = await fetch(endpoint, { method: "POST", body: form });
-      if (res.ok) {
-        this.hideAllModals();
-        this.reloadView();
-      } else {
-        alert(`Rename failed: ${await res.text()}`);
-      }
+      if (!res.ok) throw new Error(await res.text());
     } catch (err: any) {
-      alert(`Rename error: ${err.message}`);
+      // Revert name on error
+      if (el) {
+        el.setAttribute("data-name", oldName);
+        const nameEl = el.querySelector(".item-name") || el.querySelector(".file-name-link");
+        if (nameEl) {
+          nameEl.textContent = oldName;
+          nameEl.setAttribute("title", oldName);
+        }
+      }
+      alert(`Rename failed (name restored): ${err.message}`);
     }
   }
 
@@ -411,22 +504,41 @@ class ExplorerDesktopManager {
     const itemIds = selected.filter(i => i.type === "file").map(i => i.id);
     const folderIds = selected.filter(i => i.type === "folder").map(i => i.id);
 
+    // Optimistically detach elements from DOM
+    const elementsToRemove: Array<{ el: HTMLElement; parent: HTMLElement; next: Node | null }> = [];
+    const currentContainer = document.getElementById("explorer-items-container");
+    if (currentContainer) {
+      for (const item of selected) {
+        const el = currentContainer.querySelector<HTMLElement>(
+          item.type === "folder" ? `.folder-item[data-id="${item.id}"]` : `.file-item[data-item-id="${item.id}"]`
+        );
+        if (el && el.parentElement) {
+          elementsToRemove.push({ el, parent: el.parentElement, next: el.nextSibling });
+        }
+      }
+    }
+
+    for (const entry of elementsToRemove) {
+      entry.el.remove();
+    }
+    this.selectedKeys.clear();
+    this.hideAllModals();
+    this.updateVisualSelection();
+
     try {
       const res = await fetch("/explorer/batch-delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ itemIds, folderIds })
       });
-
-      if (res.ok) {
-        this.hideAllModals();
-        this.selectedKeys.clear();
-        this.reloadView();
-      } else {
-        alert(`Delete failed: ${await res.text()}`);
-      }
+      if (!res.ok) throw new Error(await res.text());
     } catch (err: any) {
-      alert(`Delete error: ${err.message}`);
+      // Rollback / Re-insert items
+      for (const entry of elementsToRemove) {
+        entry.parent.insertBefore(entry.el, entry.next);
+      }
+      this.updateVisualSelection();
+      alert(`Delete failed (items restored): ${err.message}`);
     }
   }
 
@@ -687,6 +799,7 @@ class ExplorerDesktopManager {
     let startX = 0;
     let startY = 0;
     let hasMoved = false;
+    let cachedItemRects: Array<{ key: string; rect: DOMRect }> = [];
 
     document.addEventListener("mousedown", (e: MouseEvent) => {
       // Left mouse button only
@@ -716,6 +829,7 @@ class ExplorerDesktopManager {
       startY = e.clientY;
       hasMoved = false;
       this.isMarqueeActive = true;
+      cachedItemRects = [];
 
       const onMouseMove = (moveEv: MouseEvent) => {
         if (!this.isMarqueeActive) return;
@@ -729,6 +843,11 @@ class ExplorerDesktopManager {
             this.selectedKeys.clear();
           }
           this.createMarqueeElement();
+          // Cache item rects once on marquee start to eliminate layout thrashing
+          cachedItemRects = this.getAllItemElements().map((item) => ({
+            key: this.getItemKey(item),
+            rect: item.getBoundingClientRect(),
+          }));
         }
 
         if (hasMoved && this.marqueeEl) {
@@ -749,9 +868,8 @@ class ExplorerDesktopManager {
             bottom: top + height,
           };
 
-          const items = this.getAllItemElements();
-          for (const item of items) {
-            const rect = item.getBoundingClientRect();
+          for (const entry of cachedItemRects) {
+            const rect = entry.rect;
             const intersects = !(
               rect.right < marqueeRect.left ||
               rect.left > marqueeRect.right ||
@@ -759,11 +877,10 @@ class ExplorerDesktopManager {
               rect.top > marqueeRect.bottom
             );
 
-            const key = this.getItemKey(item);
             if (intersects) {
-              this.selectedKeys.add(key);
+              this.selectedKeys.add(entry.key);
             } else if (!moveEv.ctrlKey && !moveEv.metaKey) {
-              this.selectedKeys.delete(key);
+              this.selectedKeys.delete(entry.key);
             }
           }
           this.updateVisualSelection();
@@ -772,6 +889,7 @@ class ExplorerDesktopManager {
 
       const onMouseUp = (upEv: MouseEvent) => {
         this.isMarqueeActive = false;
+        cachedItemRects = [];
         document.removeEventListener("mousemove", onMouseMove);
         document.removeEventListener("mouseup", onMouseUp);
 
@@ -874,6 +992,40 @@ class ExplorerDesktopManager {
       const itemIds = payload.items.filter(i => i.type === "file").map(i => i.id);
       const folderIds = payload.items.filter(i => i.type === "folder").map(i => i.id);
 
+      // Optimistically detach dragged elements from current directory view
+      const elementsToRemove: Array<{ el: HTMLElement; parent: HTMLElement; next: Node | null }> = [];
+      const currentContainer = document.getElementById("explorer-items-container");
+      if (currentContainer) {
+        for (const item of payload.items) {
+          const el = currentContainer.querySelector<HTMLElement>(
+            item.type === "folder" ? `.folder-item[data-id="${item.id}"]` : `.file-item[data-item-id="${item.id}"]`
+          );
+          if (el && el.parentElement) {
+            elementsToRemove.push({ el, parent: el.parentElement, next: el.nextSibling });
+          }
+        }
+      }
+
+      for (const entry of elementsToRemove) {
+        entry.el.remove();
+        this.selectedKeys.delete(this.getItemKey(entry.el));
+      }
+      this.updateVisualSelection();
+
+      // Optimistically increment badge on target folder if visible
+      const isVisibleFolder = dropTarget.classList.contains("folder-item");
+      const targetMeta = isVisibleFolder ? (dropTarget.querySelector(".item-meta") || dropTarget.querySelector("td:nth-child(4)")) : null;
+      let prevMetaText = "";
+      if (targetMeta) {
+        prevMetaText = targetMeta.textContent || "";
+        const fileMatch = prevMetaText.match(/(\d+)\s+file/);
+        if (fileMatch) {
+          const currentCount = parseInt(fileMatch[1]!, 10);
+          const newCount = currentCount + itemIds.length;
+          targetMeta.textContent = prevMetaText.replace(/\d+\s+file(s?)/, `${newCount} file${newCount === 1 ? "" : "s"}`);
+        }
+      }
+
       try {
         const res = await fetch("/explorer/paste", {
           method: "POST",
@@ -886,13 +1038,19 @@ class ExplorerDesktopManager {
           })
         });
 
-        if (res.ok) {
-          this.reloadView();
-        } else {
-          alert(`Drop relocation failed: ${await res.text()}`);
+        if (!res.ok) {
+          throw new Error(await res.text());
         }
       } catch (err: any) {
-        alert(`Drop error: ${err.message}`);
+        // Rollback optimistic removal
+        for (const entry of elementsToRemove) {
+          entry.parent.insertBefore(entry.el, entry.next);
+        }
+        if (targetMeta && prevMetaText) {
+          targetMeta.textContent = prevMetaText;
+        }
+        this.updateVisualSelection();
+        alert(`Drop relocation failed (items restored): ${err.message}`);
       }
     });
   }

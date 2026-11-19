@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import { DirectoryModel } from "../models/Directory";
-import { Explorer, ExplorerContent } from "../views/Explorer";
+import { Explorer, ExplorerContent, ExplorerItemsChunk } from "../views/Explorer";
 import type { AppEnv } from "../types";
 
 export class ExplorerController {
@@ -21,7 +21,11 @@ export class ExplorerController {
 
     const breadcrumbs = DirectoryModel.getBreadcrumbs(dirId);
     const subdirectories = DirectoryModel.getSubdirectories(dirId);
-    const items = DirectoryModel.getItems(dirId, sortParam);
+    const limit = 100;
+    const items = DirectoryModel.getItems(dirId, sortParam, limit, 0);
+    const totalCount = DirectoryModel.getTotalItemCount(dirId);
+    const hasMore = items.length < totalCount;
+    const nextOffset = items.length;
     const highlightPostId = highlightParam ? parseInt(highlightParam, 10) : undefined;
 
     const isHtmx = c.req.header("hx-request") === "true";
@@ -38,6 +42,8 @@ export class ExplorerController {
           viewMode={viewParam}
           sortBy={sortParam}
           highlightPostId={highlightPostId}
+          hasMore={hasMore}
+          nextOffset={nextOffset}
         />
       );
     }
@@ -52,8 +58,37 @@ export class ExplorerController {
         viewMode={viewParam}
         sortBy={sortParam}
         highlightPostId={highlightPostId}
+        hasMore={hasMore}
+        nextOffset={nextOffset}
       />,
       { title: `Explorer - ${dir.name}` }
+    );
+  }
+
+  static async getItemsChunk(c: Context<AppEnv>) {
+    const dirParam = c.req.query("dir");
+    const viewParam = (c.req.query("view") as "grid" | "list") || "grid";
+    const sortParam = (c.req.query("sort") as "name" | "date" | "size") || "name";
+    const offsetParam = parseInt(c.req.query("offset") || "0", 10);
+    const limit = 100;
+
+    let dirId = dirParam ? parseInt(dirParam, 10) : 1;
+    if (isNaN(dirId) || dirId < 1) dirId = 1;
+
+    const items = DirectoryModel.getItems(dirId, sortParam, limit, offsetParam);
+    const totalCount = DirectoryModel.getTotalItemCount(dirId);
+    const nextOffset = offsetParam + items.length;
+    const hasMore = nextOffset < totalCount;
+
+    return c.html(
+      <ExplorerItemsChunk
+        dirId={dirId}
+        items={items}
+        viewMode={viewParam}
+        sortBy={sortParam}
+        hasMore={hasMore}
+        nextOffset={nextOffset}
+      />
     );
   }
 
