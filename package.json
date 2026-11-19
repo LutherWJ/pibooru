@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "start": "bun src/server/index.tsx",
-    "build": "bun build src/client/index.ts src/client/explorer-touch.ts --outdir public/dist --minify",
+    "build": "bun build src/client/index.ts src/client/explorer-touch.ts src/client/explorer-desktop.ts --outdir public/dist --minify",
     "typecheck": "bun x tsc --noEmit",
     "test": "DATA_DIR=./data-test COOKIE_SECRET=at_least_32_characters_long_secret_for_test bun test src/server",
     "test:e2e": "NODE_ENV=test DATA_DIR=./data-test bun test tests/e2e",

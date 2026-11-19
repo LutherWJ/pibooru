@@ -344,6 +344,11 @@
         return;
       }
 
+      // On Explorer page, delegate all keyboard management to explorer-desktop
+      if (window.location.pathname.startsWith('/explorer')) {
+        return;
+      }
+
       // Escape key hierarchy
       if (key === 'escape') {
         // 1. Lightbox Modal

@@ -192,6 +192,60 @@ export class DirectoryModel {
   }
 
   /**
+   * Moves a directory into a new parent directory.
+   * Prevents moving root, moving into itself, or creating circular directory ancestry.
+   */
+  static moveDirectory(id: number, targetParentId: number): Directory {
+    if (id === 1) throw new Error("Root directory cannot be moved");
+    if (id === targetParentId) throw new Error("Cannot move directory into itself");
+
+    const targetParent = this.getById(targetParentId);
+    if (!targetParent) throw new Error("Target parent directory not found");
+
+    const current = this.getById(id);
+    if (!current) throw new Error("Directory not found");
+
+    // Detect circular ancestry: check if targetParent is a descendant of id
+    let ancestorCheck: number | null = targetParentId;
+    while (ancestorCheck !== null) {
+      if (ancestorCheck === id) {
+        throw new Error("Cannot move a directory into its own subfolder");
+      }
+      const p = db.query("SELECT parent_id FROM directories WHERE id = ?").get(ancestorCheck) as { parent_id: number | null } | undefined;
+      ancestorCheck = p ? p.parent_id : null;
+    }
+
+    // Check duplicate name under target parent
+    const duplicate = db.query("SELECT id FROM directories WHERE parent_id = ? AND name = ? COLLATE NOCASE AND id != ?")
+      .get(targetParentId, current.name, id);
+    if (duplicate) {
+      throw new Error(`A folder named '${current.name}' already exists in the target directory`);
+    }
+
+    db.prepare("UPDATE directories SET parent_id = ? WHERE id = ?").run(targetParentId, id);
+    return this.getById(id)!;
+  }
+
+  /**
+   * Batch deletes multiple directories.
+   */
+  static batchDeleteFolders(folderIds: number[]): void {
+    const validIds = folderIds.filter(id => id !== 1);
+    if (validIds.length === 0) return;
+    const placeholders = validIds.map(() => "?").join(",");
+    db.prepare(`DELETE FROM directories WHERE id IN (${placeholders})`).run(...validIds);
+  }
+
+  /**
+   * Batch unlinks multiple items from directories.
+   */
+  static batchRemoveItems(itemIds: number[]): void {
+    if (itemIds.length === 0) return;
+    const placeholders = itemIds.map(() => "?").join(",");
+    db.prepare(`DELETE FROM directory_items WHERE id IN (${placeholders})`).run(...itemIds);
+  }
+
+  /**
    * Renames an item inside a folder.
    */
   static renameItem(itemId: number, rawName: string): void {

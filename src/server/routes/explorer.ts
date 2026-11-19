@@ -11,4 +11,5 @@ explorerRouter.delete("/explorer/folders/:id", ExplorerController.deleteFolder);
 explorerRouter.post("/explorer/items/:id/rename", ExplorerController.renameItem);
 explorerRouter.delete("/explorer/items/:id", ExplorerController.removeItem);
 explorerRouter.post("/explorer/paste", ExplorerController.pasteItems);
+explorerRouter.post("/explorer/batch-delete", ExplorerController.batchDelete);
 explorerRouter.get("/explorer/post-locations/:postId", ExplorerController.getPostLocations);

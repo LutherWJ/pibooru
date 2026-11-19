@@ -120,21 +120,51 @@ export class ExplorerController {
     try {
       const data = await c.req.json<{
         action: "cut" | "copy";
-        itemIds: number[];
+        itemIds?: number[];
+        folderIds?: number[];
         targetDirId: number;
       }>();
 
-      const { action, itemIds, targetDirId } = data;
-      if (!Array.isArray(itemIds) || !targetDirId) {
+      const { action, itemIds = [], folderIds = [], targetDirId } = data;
+      if (!targetDirId || (!Array.isArray(itemIds) && !Array.isArray(folderIds))) {
         return c.text("Invalid paste payload", 400);
       }
 
-      for (const id of itemIds) {
-        if (action === "copy") {
-          DirectoryModel.copyItem(id, targetDirId);
-        } else if (action === "cut") {
-          DirectoryModel.moveItem(id, targetDirId);
+      if (Array.isArray(itemIds)) {
+        for (const id of itemIds) {
+          if (action === "copy") {
+            DirectoryModel.copyItem(id, targetDirId);
+          } else if (action === "cut") {
+            DirectoryModel.moveItem(id, targetDirId);
+          }
         }
+      }
+
+      if (Array.isArray(folderIds) && action === "cut") {
+        for (const fId of folderIds) {
+          DirectoryModel.moveDirectory(fId, targetDirId);
+        }
+      }
+
+      return c.json({ success: true });
+    } catch (err: any) {
+      return c.text(err.message, 400);
+    }
+  }
+
+  static async batchDelete(c: Context<AppEnv>) {
+    try {
+      const data = await c.req.json<{
+        itemIds?: number[];
+        folderIds?: number[];
+      }>();
+      const { itemIds = [], folderIds = [] } = data;
+
+      if (Array.isArray(itemIds) && itemIds.length > 0) {
+        DirectoryModel.batchRemoveItems(itemIds);
+      }
+      if (Array.isArray(folderIds) && folderIds.length > 0) {
+        DirectoryModel.batchDeleteFolders(folderIds);
       }
 
       return c.json({ success: true });

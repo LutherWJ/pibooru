@@ -48,6 +48,8 @@ export const ExplorerContent: FC<ExplorerProps> = ({
                       hx-target="#explorer-content"
                       hx-swap="outerHTML"
                       hx-push-url={`/explorer?dir=${crumb.id}&view=${viewMode}&sort=${sortBy}`}
+                      data-dir-id={crumb.id}
+                      class="breadcrumb-drop-target"
                     >
                       {crumb.name}
                     </a>
@@ -179,8 +181,8 @@ export const ExplorerContent: FC<ExplorerProps> = ({
               data-type="folder"
               data-id={dir.id}
               data-name={dir.name}
+              draggable={true}
               tabIndex={0}
-              ondblclick={`window.location.href = '/explorer?dir=${dir.id}&view=${viewMode}&sort=${sortBy}'`}
             >
               <div class="item-icon folder-icon">📁</div>
               <div class="item-name" title={dir.name}>
@@ -205,8 +207,8 @@ export const ExplorerContent: FC<ExplorerProps> = ({
                 data-item-id={item.id}
                 data-post-id={item.post_id}
                 data-name={item.custom_name || `${item.hash}${item.extension}`}
+                draggable={true}
                 tabIndex={0}
-                ondblclick={`window.location.href = '/post/${item.post_id}'`}
               >
                 <div class="item-thumb-wrapper">
                   <img
@@ -246,7 +248,7 @@ export const ExplorerContent: FC<ExplorerProps> = ({
                   data-type="folder"
                   data-id={dir.id}
                   data-name={dir.name}
-                  ondblclick={`window.location.href = '/explorer?dir=${dir.id}&view=${viewMode}&sort=${sortBy}'`}
+                  draggable={true}
                 >
                   <td class="text-center" style="font-size: 18px;">📁</td>
                   <td class="font-bold">
@@ -276,7 +278,7 @@ export const ExplorerContent: FC<ExplorerProps> = ({
                     data-item-id={item.id}
                     data-post-id={item.post_id}
                     data-name={name}
-                    ondblclick={`window.location.href = '/post/${item.post_id}'`}
+                    draggable={true}
                   >
                     <td class="text-center">
                       <span class={`rating-pill rating-${item.rating}`}>{item.rating.toUpperCase()}</span>
@@ -308,189 +310,72 @@ export const Explorer: FC<ExplorerProps> = (props) => {
     <div class="explorer-page">
       <ExplorerContent {...props} />
 
-      {/* Client-side Explorer Scripts (Clipboard, Selection, Modals, Drag-Drop) */}
+      {/* In-Page Modal: New Folder */}
+      <div id="modal-new-folder" class="explorer-modal-backdrop">
+        <div class="explorer-modal" role="dialog" aria-modal="true" aria-labelledby="modal-new-folder-title">
+          <h3 id="modal-new-folder-title">📁 New Folder</h3>
+          <p>Create a new subfolder in the current directory.</p>
+          <input
+            type="text"
+            id="new-folder-name-input"
+            placeholder="Folder name"
+            onkeydown="if(event.key === 'Enter') window.submitNewFolder();"
+          />
+          <div class="explorer-modal-actions">
+            <button type="button" class="button" onclick="window.hideExplorerModals()">Cancel</button>
+            <button type="button" class="button btn-primary" onclick="window.submitNewFolder()">Create</button>
+          </div>
+        </div>
+      </div>
+
+      {/* In-Page Modal: Rename Item */}
+      <div id="modal-rename" class="explorer-modal-backdrop">
+        <div class="explorer-modal" role="dialog" aria-modal="true" aria-labelledby="modal-rename-title">
+          <h3 id="modal-rename-title">✏️ Rename <span id="rename-type-label">Item</span></h3>
+          <p>Enter the new name:</p>
+          <input
+            type="text"
+            id="rename-input"
+            placeholder="New name"
+            onkeydown="if(event.key === 'Enter') window.submitRename();"
+          />
+          <div class="explorer-modal-actions">
+            <button type="button" class="button" onclick="window.hideExplorerModals()">Cancel</button>
+            <button type="button" class="button btn-primary" onclick="window.submitRename()">Rename</button>
+          </div>
+        </div>
+      </div>
+
+      {/* In-Page Modal: Delete / Remove Confirmation */}
+      <div id="modal-confirm-delete" class="explorer-modal-backdrop">
+        <div class="explorer-modal" role="dialog" aria-modal="true" aria-labelledby="modal-delete-title">
+          <h3 id="modal-delete-title">🗑️ Confirm Removal</h3>
+          <p id="confirm-delete-message">Are you sure you want to remove the selected items?</p>
+          <div class="explorer-modal-actions">
+            <button type="button" class="button" onclick="window.hideExplorerModals()">Cancel</button>
+            <button type="button" class="button text-red" onclick="window.submitBatchDelete()">Remove / Delete</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Auto-scroll highlighted post script */}
       <script dangerouslySetInnerHTML={{ __html: `
         (function() {
-          let selectedItem = null; // { type: 'folder' | 'file', id: string, name: string }
-
-          window.updateClipboardBadge = function() {
-            try {
-              const raw = sessionStorage.getItem("mybooru_explorer_clipboard");
-              const badge = document.getElementById("clipboard-badge");
-              if (!badge) return;
-              if (raw) {
-                const clip = JSON.parse(raw);
-                if (clip.items && clip.items.length > 0) {
-                  badge.textContent = "(" + clip.items.length + " " + clip.action + ")";
-                  badge.style.display = "inline";
-                  return;
-                }
-              }
-              badge.style.display = "none";
-            } catch {}
-          };
-
-          window.selectExplorerItem = function(el) {
-            document.querySelectorAll(".explorer-item.selected").forEach(item => item.classList.remove("selected"));
-            if (el) {
-              el.classList.add("selected");
-              selectedItem = {
-                type: el.getAttribute("data-type"),
-                id: el.getAttribute("data-id") || el.getAttribute("data-item-id"),
-                name: el.getAttribute("data-name"),
-                postId: el.getAttribute("data-post-id")
-              };
-            } else {
-              selectedItem = null;
-            }
-          };
-
-          // Delegate click for selecting items
-          document.addEventListener("click", function(e) {
-            const item = e.target.closest(".explorer-item");
-            if (item) {
-              window.selectExplorerItem(item);
-            } else if (!e.target.closest(".explorer-toolbar")) {
-              window.selectExplorerItem(null);
-            }
-          });
-
-          // New Folder modal/prompt
-          window.showNewFolderModal = function() {
-            const name = prompt("Enter new folder name:");
-            if (!name || !name.trim()) return;
-            const currentDir = document.getElementById("explorer-meta")?.getAttribute("data-current-dir") || "1";
-
-            const form = new FormData();
-            form.append("parent_id", currentDir);
-            form.append("name", name.trim());
-
-            fetch("/explorer/folders", {
-              method: "POST",
-              body: form
-            }).then(res => {
-              if (res.ok) window.location.reload();
-              else res.text().then(msg => alert("Error: " + msg));
-            });
-          };
-
-          // Cut action
-          window.explorerCutSelection = function() {
-            if (!selectedItem || selectedItem.type !== "file") {
-              alert("Please select a file to cut.");
-              return;
-            }
-            sessionStorage.setItem("mybooru_explorer_clipboard", JSON.stringify({
-              action: "cut",
-              items: [{ id: selectedItem.id, name: selectedItem.name, postId: selectedItem.postId }]
-            }));
-            window.updateClipboardBadge();
-          };
-
-          // Copy action
-          window.explorerCopySelection = function() {
-            if (!selectedItem || selectedItem.type !== "file") {
-              alert("Please select a file to copy.");
-              return;
-            }
-            sessionStorage.setItem("mybooru_explorer_clipboard", JSON.stringify({
-              action: "copy",
-              items: [{ id: selectedItem.id, name: selectedItem.name, postId: selectedItem.postId }]
-            }));
-            window.updateClipboardBadge();
-          };
-
-          // Paste action
-          window.explorerPaste = function() {
-            const raw = sessionStorage.getItem("mybooru_explorer_clipboard");
-            if (!raw) {
-              alert("Clipboard is empty. Cut or copy a file first.");
-              return;
-            }
-            const clip = JSON.parse(raw);
-            const currentDir = document.getElementById("explorer-meta")?.getAttribute("data-current-dir") || "1";
-
-            fetch("/explorer/paste", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                action: clip.action,
-                itemIds: clip.items.map(i => parseInt(i.id, 10)),
-                targetDirId: parseInt(currentDir, 10)
-              })
-            }).then(res => {
-              if (res.ok) {
-                if (clip.action === "cut") {
-                  sessionStorage.removeItem("mybooru_explorer_clipboard");
-                }
-                window.location.reload();
-              } else {
-                res.text().then(msg => alert("Paste failed: " + msg));
-              }
-            });
-          };
-
-          // Rename action
-          window.explorerRenameSelection = function() {
-            if (!selectedItem) {
-              alert("Select a folder or file to rename.");
-              return;
-            }
-            const newName = prompt("Rename to:", selectedItem.name);
-            if (!newName || !newName.trim() || newName.trim() === selectedItem.name) return;
-
-            const endpoint = selectedItem.type === "folder" 
-              ? "/explorer/folders/" + selectedItem.id + "/rename"
-              : "/explorer/items/" + selectedItem.id + "/rename";
-
-            const form = new FormData();
-            form.append("name", newName.trim());
-
-            fetch(endpoint, {
-              method: "POST",
-              body: form
-            }).then(res => {
-              if (res.ok) window.location.reload();
-              else res.text().then(msg => alert("Rename failed: " + msg));
-            });
-          };
-
-          // Delete / Remove action
-          window.explorerDeleteSelection = function() {
-            if (!selectedItem) {
-              alert("Select an item to remove.");
-              return;
-            }
-            const isFolder = selectedItem.type === "folder";
-            const confirmMsg = isFolder
-              ? "Are you sure you want to delete the folder '" + selectedItem.name + "'? (Media files inside will not be deleted)."
-              : "Remove '" + selectedItem.name + "' from this directory? (The original post is not deleted).";
-
-            if (!confirm(confirmMsg)) return;
-
-            const endpoint = isFolder
-              ? "/explorer/folders/" + selectedItem.id
-              : "/explorer/items/" + selectedItem.id;
-
-            fetch(endpoint, { method: "DELETE" }).then(res => {
-              if (res.ok) window.location.reload();
-              else res.text().then(msg => alert("Delete failed: " + msg));
-            });
-          };
-
-          // Auto-scroll highlighted post into view
-          window.addEventListener("DOMContentLoaded", () => {
-            window.updateClipboardBadge();
-            const highlighted = document.querySelector(".explorer-item.highlighted");
-            if (highlighted) {
-              highlighted.scrollIntoView({ behavior: "smooth", block: "center" });
-            }
-          });
-          window.updateClipboardBadge();
+          function checkHighlight() {
+            const el = document.querySelector(".explorer-item.highlighted");
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+          if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", checkHighlight);
+          } else {
+            checkHighlight();
+          }
+          document.addEventListener("htmx:afterSwap", checkHighlight);
         })();
       ` }} />
 
-      {/* Conditional Segregated Mobile Touch Script */}
+      {/* Bundled Client Modules */}
+      <script src="/public/dist/explorer-desktop.js" defer></script>
       <script src="/public/dist/explorer-touch.js" defer></script>
     </div>
   );

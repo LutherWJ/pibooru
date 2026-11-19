@@ -130,6 +130,43 @@ describe("Explorer Controller & Endpoints", () => {
     const targetItems = DirectoryModel.getItems(targetFolder.id);
     expect(targetItems.length).toBe(1);
     expect(targetItems[0]!.post_id).toBe(item.post_id);
+
+    // Also test moving a folder via POST /explorer/paste
+    const subFolder = DirectoryModel.createDirectory(1, "SubFolderToMove");
+    const moveFolderRes = await app.request("/explorer/paste", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "cut",
+        folderIds: [subFolder.id],
+        targetDirId: targetFolder.id,
+      }),
+    });
+    expect(moveFolderRes.status).toBe(200);
+    const moved = DirectoryModel.getById(subFolder.id);
+    expect(moved?.parent_id).toBe(targetFolder.id);
+  });
+
+  it("should handle batch deletion via POST /explorer/batch-delete", async () => {
+    const folderA = DirectoryModel.createDirectory(1, "BatchDeleteFolder");
+    const item = DirectoryModel.getItems(1)[0]!;
+
+    const res = await app.request("/explorer/batch-delete", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        itemIds: [item.id],
+        folderIds: [folderA.id],
+      }),
+    });
+    expect(res.status).toBe(200);
+    expect(DirectoryModel.getById(folderA.id)).toBeUndefined();
   });
 
   it("should return post directory locations on GET /explorer/post-locations/:postId", async () => {

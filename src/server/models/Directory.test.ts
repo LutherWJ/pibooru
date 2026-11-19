@@ -175,4 +175,43 @@ describe("DirectoryModel (Virtual File Explorer)", () => {
     expect(locations.length).toBeGreaterThanOrEqual(1);
     expect(locations.some(l => l.directoryId === 1)).toBe(true);
   });
+
+  it("should move directories and prevent circular ancestry or root movement", () => {
+    const parentA = DirectoryModel.createDirectory(1, "FolderA");
+    const childB = DirectoryModel.createDirectory(parentA.id, "FolderB");
+    const grandchildC = DirectoryModel.createDirectory(childB.id, "FolderC");
+
+    // Rejects moving root
+    expect(() => DirectoryModel.moveDirectory(1, parentA.id)).toThrow();
+    // Rejects moving into itself
+    expect(() => DirectoryModel.moveDirectory(parentA.id, parentA.id)).toThrow();
+    // Rejects moving parent into descendant (circular ancestry)
+    expect(() => DirectoryModel.moveDirectory(parentA.id, grandchildC.id)).toThrow();
+
+    // Valid move: move grandchildC up to FolderA
+    const moved = DirectoryModel.moveDirectory(grandchildC.id, parentA.id);
+    expect(moved.parent_id).toBe(parentA.id);
+
+    const subdirs = DirectoryModel.getSubdirectories(parentA.id);
+    expect(subdirs.some(d => d.id === grandchildC.id)).toBe(true);
+  });
+
+  it("should batch delete directories and batch remove items", () => {
+    const dirX = DirectoryModel.createDirectory(1, "DirX");
+    const dirY = DirectoryModel.createDirectory(1, "DirY");
+
+    const rootItems = DirectoryModel.getItems(1);
+    const itemIds = rootItems.slice(0, 2).map(i => i.id);
+
+    DirectoryModel.batchRemoveItems(itemIds);
+    const updatedRootItems = DirectoryModel.getItems(1);
+    for (const id of itemIds) {
+      expect(updatedRootItems.some(i => i.id === id)).toBe(false);
+    }
+
+    DirectoryModel.batchDeleteFolders([dirX.id, dirY.id, 1]); // 1 should be protected
+    expect(DirectoryModel.getById(dirX.id)).toBeUndefined();
+    expect(DirectoryModel.getById(dirY.id)).toBeUndefined();
+    expect(DirectoryModel.getById(1)).toBeDefined();
+  });
 });
